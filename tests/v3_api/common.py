@@ -11,7 +11,7 @@ import rancher
 from rancher import ApiError
 from lib.aws import AmazonWebServices
 
-DEFAULT_TIMEOUT = 120
+DEFAULT_TIMEOUT = 500
 DEFAULT_MULTI_CLUSTER_APP_TIMEOUT = 300
 
 CATTLE_TEST_URL = os.environ.get('CATTLE_TEST_URL', "http://localhost:80")
