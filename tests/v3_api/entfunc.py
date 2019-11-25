@@ -1,5 +1,6 @@
 from .common import *  # NOQA
 from time import gmtime
+from netaddr import *
 import yaml
 
 
@@ -7,8 +8,6 @@ DEFAULT_NODEPOOL_TIMEOUT = 300
 TEST_INTERNAL_IMAGE = os.environ.get('RANCHER_TEST_IMAGE', "busybox:musl")
 TEST_INGRESS_TARGET_PORT = os.environ.get('RANCHER_TEST_INGRESS_TARGET_PORT', "8088")
 MACVLAN_SERVICE_SUFFIX="-macvlan"
-macvlan_subnet_fname = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                  random_test_name("test-macvlan-subnet") + ".yaml")
 
 def get_admin_client_byToken(url, token):
     return rancher.Client(url=url, token=token, verify=False)
@@ -235,6 +234,7 @@ def validate_macvlan_workload(p_client, workload, type, ns_name, pod_count, wait
         if type == "job":
             assert wl_result["status"]["active"] == pod_count
             return
+
         for key, value in workload.workloadLabels.items():
             label = key + "=" + value
         get_pods = "get pods -l" + label + " -n " + ns_name
@@ -799,3 +799,4 @@ def get_macvlan_subnet_template(name,project,master,vlan,cidr,gateway,ranges,rou
         }
     }
     return maxvlan_subnet_template
+    return returncode

@@ -79,5 +79,5 @@ EOF
 	rm -f ${USERDATA_FILE}
 	
 done;
-#apt  install -y -q docker.io
+apt  install -y -q docker.io
 docker run -d --restart=unless-stopped -p 8088:80 -p 8443:443 cnrancher/rancher:${TAG}
