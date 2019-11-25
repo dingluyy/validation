@@ -11,7 +11,7 @@ import rancher
 from rancher import ApiError
 from lib.aws import AmazonWebServices
 
-DEFAULT_TIMEOUT = 120
+DEFAULT_TIMEOUT = 500
 DEFAULT_MULTI_CLUSTER_APP_TIMEOUT = 300
 
 CATTLE_TEST_URL = os.environ.get('CATTLE_TEST_URL', "http://localhost:80")
@@ -212,6 +212,7 @@ def validate_psp_error_worklaod(p_client, workload, error_message):
 
 def validate_workload(p_client, workload, type, ns_name, pod_count=1,
                       wait_for_cron_pods=60):
+    time.sleep(20)
     workload = wait_for_wl_to_active(p_client, workload)
     assert workload.state == "active"
     # For cronjob, wait for the first pod to get created after
@@ -219,6 +220,7 @@ def validate_workload(p_client, workload, type, ns_name, pod_count=1,
     if type == "cronJob":
         time.sleep(wait_for_cron_pods)
     pods = p_client.list_pod(workloadId=workload.id).data
+    print("validate_workload pods : ",pods)
     assert len(pods) == pod_count
     for pod in pods:
         wait_for_pod_to_running(p_client, pod)
@@ -243,6 +245,7 @@ def validate_workload(p_client, workload, type, ns_name, pod_count=1,
 
 def validate_workload_with_sidekicks(p_client, workload, type, ns_name,
                                      pod_count=1):
+    time.sleep(10)
     workload = wait_for_wl_to_active(p_client, workload)
     assert workload.state == "active"
     pods = wait_for_pods_in_workload(p_client, workload, pod_count)
