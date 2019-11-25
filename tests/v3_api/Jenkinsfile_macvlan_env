@@ -1,0 +1,85 @@
+// Job Params
+// Requires: PYTEST_OPTIONS, RANCHER_GKE_SERVER_IP, branch
+
+node {
+  def rootPath = "/src/rancher-validation/"
+  def testContainer = "${JOB_NAME}${env.BUILD_NUMBER}_test"
+
+  def setupResultsOut = "setup-results.xml"
+  def testResultsOut = "results.xml"
+  def imageName = "rancher-validation-${JOB_NAME}${env.BUILD_NUMBER}"
+  def testsDir = "tests/v3_api/"
+  def macvlanScriptsDir = "tests/v3_api/scripts/macvlan/"
+
+  def branch = "master"
+  if ("${env.branch}" != "null" && "${env.branch}" != "") {
+    branch = "${env.branch}"
+  }
+
+  if ("${env.RANCHER_GKE_SERVER_IP}" == "" || "${env.RANCHER_GKE_SERVER_IP}" == "null"){
+    echo "RANCHER_GKE_SERVER_IP is NULL"
+    currentBuild.result = 'FAILURE'
+    return
+  }
+
+  wrap([$class: 'AnsiColorBuildWrapper', 'colorMapName': 'XTerm', 'defaultFg': 2, 'defaultBg':1]) {
+    stage('Checkout') {
+      deleteDir()
+      checkout([
+                $class: 'GitSCM',
+                branches: [[name: "*/${branch}"]],
+                extensions: scm.extensions + [[$class: 'CleanCheckout']],
+                userRemoteConfigs: scm.userRemoteConfigs
+              ])
+    }
+    stage('credentials'){
+        sh "./tests/v3_api/scripts/configure.sh"
+        sshagent (credentials: ['gke-jenkins']) {
+              remote_dir = sh(script:"ssh -o StrictHostKeyChecking=no -l jenkins ${env.RANCHER_GKE_SERVER_IP} 'pwd'",returnStdout: true).trim()
+              dir = pwd()
+              sh("""
+                scp -o StrictHostKeyChecking=no -r ${dir}/${macvlanScriptsDir} jenkins@${env.RANCHER_GKE_SERVER_IP}:${remote_dir}
+              """)
+              sh("""
+                ssh -o StrictHostKeyChecking=no -l jenkins ${env.RANCHER_GKE_SERVER_IP} 'sudo ln -sf /bin/bash /bin/sh'
+              """)
+              sh("""
+                ssh -o StrictHostKeyChecking=no -l jenkins ${env.RANCHER_GKE_SERVER_IP} 'sudo sh ${remote_dir}/macvlan/setup.sh ${env.RANCHER_SERVER_VERSION}'
+              """)
+              sh("""
+                ssh -o StrictHostKeyChecking=no -l jenkins ${env.RANCHER_GKE_SERVER_IP} 'sudo sh ${remote_dir}/macvlan/tmux.sh'
+              """)
+        }
+        sh "sleep 200s"
+    }
+
+//
+    if(PYTEST_OPTIONS){
+        stage('Configure and Build') {
+          sh "./tests/v3_api/scripts/build.sh"
+        }
+
+        //
+        try {
+          stage('Run Validation Tests') {
+            try {
+              sh "docker run --name ${testContainer}  --env-file .env  -v /var/lib/jenkins/.ssh:/src/rancher-validation/.ssh " +
+                 "${imageName} /bin/bash -c \'pytest -v -s --junit-xml=${testResultsOut} ${PYTEST_OPTIONS} ${testsDir}\'"
+            } catch(err) {
+              echo 'Test run had failures. Collecting results...'
+            }
+          }
+        } catch(err){
+          sh "docker stop ${testContainer}"
+          sh "docker rm -v ${testContainer}"
+          sh "docker rmi ${imageName}"
+          sshagent (credentials: ['gke-jenkins']) {
+                remote_dir = sh(script:"ssh -o StrictHostKeyChecking=no -l jenkins ${env.RANCHER_GKE_SERVER_IP} 'pwd'",returnStdout: true).trim()
+                sh("""
+                    ssh -o StrictHostKeyChecking=no -l jenkins ${env.RANCHER_GKE_SERVER_IP} 'sudo sh ${remote_dir}/macvlan/teardown.sh'
+                """)
+           }
+        }
+    }
+  }
+}
