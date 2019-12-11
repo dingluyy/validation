@@ -97,8 +97,24 @@ def test_wl_cronjob():
                                             "successfulJobsHistoryLimit": 10})
     validate_workload(p_client, workload, "cronJob", ns.name)
 
+def test_wl_job():
+    p_client = namespace["p_client"]
+    ns = namespace["ns"]
+    con = [{"name": "test1",
+            "image": TEST_IMAGE}]
+    name = random_test_name("default")
+    workload = p_client.create_workload(name=name,
+                                        containers=con,
+                                        namespaceId=ns.id,
+                                        jobConfig={"type":"jobConfig"})
+    validate_workload(p_client, workload, "job", ns.name)
+
 
 def test_wl_upgrade():
+    '''
+    upgrade & rollback
+    :return:
+    '''
     p_client = namespace["p_client"]
     ns = namespace["ns"]
     con = [{"name": "test1",
@@ -164,6 +180,10 @@ def test_wl_upgrade():
 
 
 def test_wl_pod_scale_up():
+    '''
+    add pod
+    :return:
+    '''
     p_client = namespace["p_client"]
     ns = namespace["ns"]
     con = [{"name": "test1",
@@ -224,6 +244,10 @@ def test_wl_pod_scale_down():
 
 
 def test_wl_pause_orchestration():
+    '''
+    暂停编排/恢复编排
+    :return:
+    '''
     p_client = namespace["p_client"]
     ns = namespace["ns"]
     con = [{"name": "test1",
@@ -560,4 +584,5 @@ def create_project_client(request):
     def fin():
         client = get_admin_client()
         client.delete(namespace["project"])
+        time.sleep(5)
     request.addfinalizer(fin)

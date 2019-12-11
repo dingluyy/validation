@@ -17,6 +17,7 @@ from .common import (
     get_client_for_token,
     get_cluster_client_for_token,
     random_name,
+    delete_project_and_ns
 )
 
 CATTLE_API_URL = CATTLE_TEST_URL + "/v3"
@@ -38,6 +39,7 @@ def test_rbac_cluster_owner():
     client = get_admin_client()
     assign_members_to_cluster(client, user1, cluster, "cluster-owner")
     validate_cluster_owner(user1_token, cluster)
+    delete_user(client,user1)
 
 
 def test_rbac_cluster_member():
@@ -53,6 +55,7 @@ def test_rbac_cluster_member():
     client = get_admin_client()
     assign_members_to_cluster(client, user1, cluster, "cluster-member")
     validate_cluster_member(user1_token, cluster)
+    delete_user(client,user1)
 
 
 def test_rbac_project_owner():
@@ -71,6 +74,8 @@ def test_rbac_project_owner():
     client = get_admin_client()
     assign_members_to_project(client, user1, a_p, "project-owner")
     validate_project_owner(user1_token, cluster, a_p, a_ns)
+    delete_user(client,user1)
+    delete_project_and_ns(client,a_p,a_ns)
 
 
 def test_rbac_project_member():
@@ -91,6 +96,8 @@ def test_rbac_project_member():
     client = get_admin_client()
     assign_members_to_project(client, user1, a_p, "project-member")
     validate_project_member(user1_token, cluster, a_p, a_ns)
+    delete_project_and_ns(get_admin_client(),a_p,a_ns)
+    delete_user(client,user1)
 
 
 def test_rbac_change_cluster_owner_to_cluster_member():
@@ -111,6 +118,7 @@ def test_rbac_change_cluster_owner_to_cluster_member():
     change_member_role_in_cluster(
         client, user1, crtb, "cluster-member")
     validate_cluster_member(user1_token, cluster)
+    delete_user(client,user1)
 
 
 def test_rbac_change_cluster_member_to_cluster_owner():
@@ -130,6 +138,7 @@ def test_rbac_change_cluster_member_to_cluster_owner():
     change_member_role_in_cluster(
         get_admin_client(), user1, crtb, "cluster-owner")
     validate_cluster_owner(user1_token, cluster)
+    delete_user(client,user1)
 
 
 def test_rbac_change_project_owner_to_project_member():
@@ -152,6 +161,8 @@ def test_rbac_change_project_owner_to_project_member():
     change_member_role_in_project(
         get_admin_client(), user1, prtb, "project-member")
     validate_project_member(user1_token, cluster, a_p, a_ns)
+    delete_project_and_ns(get_admin_client(),a_p,a_ns)
+    delete_user(client,user1)
 
 
 def test_rbac_change_project_member_to_project_cluster():
@@ -175,6 +186,8 @@ def test_rbac_change_project_member_to_project_cluster():
     change_member_role_in_project(
         get_admin_client(), user1, prtb, "project-owner")
     validate_project_owner(user1_token, cluster, a_p, a_ns)
+    delete_project_and_ns(get_admin_client(),a_p,a_ns)
+    delete_user(client,user1)
 
 
 def validate_cluster_owner(user_token, cluster):
@@ -207,7 +220,13 @@ def validate_cluster_owner(user_token, cluster):
     create_ns(user_c_client, cluster, a_p)
 
     # Assert that user1 is able create projects and namespace in that project
-    create_project_and_ns(user_token, cluster)
+    b_p,b_ns=create_project_and_ns(user_token, cluster)
+
+    admin_client = get_admin_client()
+    delete_project_and_ns(admin_client,b_p,b_ns)
+    delete_project_and_ns(admin_client,a_p,a_ns)
+
+    delete_user(admin_client,user2)
 
 
 def validate_cluster_member(user_token, cluster):
@@ -242,7 +261,13 @@ def validate_cluster_member(user_token, cluster):
     assert e.value.error.code == 'Forbidden'
     """
     # Assert that user1 is able create projects and namespace in that project
-    create_project_and_ns(user_token, cluster)
+    b_p,b_ns=create_project_and_ns(user_token, cluster)
+
+    admin_client = get_admin_client()
+    delete_project_and_ns(admin_client, b_p, b_ns)
+    delete_project_and_ns(admin_client, a_p, a_ns)
+
+    delete_user(admin_client, user2)
 
 
 def validate_project_owner(user_token, cluster, project, namespace):
@@ -286,6 +311,7 @@ def validate_project_owner(user_token, cluster, project, namespace):
         create_project(user_client, cluster)
     assert e.value.error.status == 403
     assert e.value.error.code == 'Forbidden'
+    delete_user(get_admin_client(),user2)
 
 
 def validate_project_member(user_token, cluster, project, namespace):
@@ -318,7 +344,7 @@ def validate_project_member(user_token, cluster, project, namespace):
     assert len(nss) == 1
 
     # Assert that user1 is able create namespace in this project
-    create_ns(p_user_client, cluster, project)
+    ns=create_ns(p_user_client, cluster, project)
 
     # Assert that user1 is NOT able to assign member to the project
     with pytest.raises(ApiError) as e:
@@ -332,6 +358,7 @@ def validate_project_member(user_token, cluster, project, namespace):
         create_project(user_client, cluster)
     assert e.value.error.status == 403
     assert e.value.error.code == 'Forbidden'
+    delete_user(get_admin_client(),user2)
 
 
 def get_user_token(user):
@@ -352,3 +379,6 @@ def create_user(client):
                                       userId=user.id)
     user_token = get_user_token(user)
     return user, user_token
+
+def delete_user(client,user):
+    client.delete(user)

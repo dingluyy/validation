@@ -42,7 +42,7 @@ def get_baidu_cce_config():
         "gpuCard": "",
         "gpuCount": 0,
         "ifBuyEip": True,
-        "imageId": "m-zknzIs5r",
+        "imageId": "m-4s2sWbLv",
         "instanceType": 10,
         "memory": 8,
         "name": "",

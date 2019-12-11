@@ -5,6 +5,7 @@ import pytest
 from .common import *  # NOQA
 
 CLUSTER_NAME = os.environ.get("CLUSTER_NAME", "")
+NEW_SECRETS = os.environ.get("RANCHER_NEW_SECRETS", "false")
 
 namespace = {"p_client": None, "ns": None, "cluster": None, "project": None}
 
@@ -37,16 +38,16 @@ def test_secret_create_all_ns():
                                                                  keyvaluepair)
 
     # Create a new namespace and workload in the new namespace using the secret
-
-    new_ns1 = create_ns(c_client, cluster, project)
-    create_and_validate_workload_with_secret_as_volume(p_client,
-                                                       secret,
-                                                       new_ns1,
-                                                       keyvaluepair)
-    create_and_validate_workload_with_secret_as_env_variable(p_client,
-                                                             secret,
-                                                             new_ns1,
-                                                             keyvaluepair)
+    if NEW_SECRETS.lower() == "true":
+        new_ns1 = create_ns(c_client, cluster, project)
+        create_and_validate_workload_with_secret_as_volume(p_client,
+                                                           secret,
+                                                           new_ns1,
+                                                           keyvaluepair)
+        create_and_validate_workload_with_secret_as_env_variable(p_client,
+                                                                 secret,
+                                                                 new_ns1,
+                                                                 keyvaluepair)
 
 
 def test_secret_create_single_ns():
@@ -129,13 +130,14 @@ def test_edit_secret_all_ns():
         p_client, secret, new_ns, updatedsecretdata)
 
     # Create a new namespace and workloads in the new namespace using secret
-    new_ns1 = create_ns(c_client, cluster, project)
+    if NEW_SECRETS.lower() == "true":
+        new_ns1 = create_ns(c_client, cluster, project)
 
-    create_and_validate_workload_with_secret_as_volume(p_client, secret,
-                                                       new_ns1,
-                                                       updatedsecretdata)
-    create_and_validate_workload_with_secret_as_env_variable(
-        p_client, secret, new_ns1, updatedsecretdata)
+        create_and_validate_workload_with_secret_as_volume(p_client, secret,
+                                                           new_ns1,
+                                                           updatedsecretdata)
+        create_and_validate_workload_with_secret_as_env_variable(
+            p_client, secret, new_ns1, updatedsecretdata)
 
 
 def test_edit_secret_single_ns():

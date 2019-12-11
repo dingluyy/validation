@@ -17,7 +17,7 @@ AUTO_DEPLOY_CUSTOM_CLUSTER = ast.literal_eval(
     os.environ.get('RANCHER_AUTO_DEPLOY_CUSTOM_CLUSTER', "True"))
 KEYPAIR_NAME_PREFIX = os.environ.get('RANCHER_KEYPAIR_NAME_PREFIX', "")
 
-
+#create aws node; custom cluster add host
 def test_add_custom_host():
     aws_nodes = AmazonWebServices().create_multiple_nodes(
         HOST_COUNT, random_test_name(HOST_NAME))
@@ -29,11 +29,11 @@ def test_add_custom_host():
             agent_cmd = AGENT_REG_CMD + additional_options
             aws_node.execute_command(agent_cmd)
 
-
+#delete aws keypair
 def test_delete_keypair():
     AmazonWebServices().delete_keypairs(KEYPAIR_NAME_PREFIX)
 
-
+#create aws node; create rancher server; create cluster
 def test_deploy_rancher_server():
     assert ADMIN_PASSWORD != "None", "Need to set admin passsword"
     RANCHER_SERVER_CMD = \
@@ -81,7 +81,7 @@ def test_deploy_rancher_server():
         env_details += "env.CLUSTER_NAME='" + cluster.name + "'\n"
     create_config_file(env_details)
 
-
+#delete cluster; delete aws node
 def test_delete_rancher_server():
     client = get_admin_client()
     clusters = client.list_cluster().data

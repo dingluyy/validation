@@ -121,6 +121,11 @@ def create_project_and_ns(token, cluster, project_name=None, ns_name=None):
     ns = create_ns(c_client, cluster, p, ns_name)
     return p, ns
 
+def delete_project_and_ns(client,project,ns):
+    if ns != None:
+        client.delete(ns)
+    if project != None:
+        client.delete(project)
 
 def create_project(client, cluster, project_name=None):
     if project_name is None:
@@ -212,6 +217,7 @@ def validate_psp_error_worklaod(p_client, workload, error_message):
 
 def validate_workload(p_client, workload, type, ns_name, pod_count=1,
                       wait_for_cron_pods=60):
+    time.sleep(20)
     workload = wait_for_wl_to_active(p_client, workload)
     assert workload.state == "active"
     # For cronjob, wait for the first pod to get created after
@@ -230,6 +236,9 @@ def validate_workload(p_client, workload, type, ns_name, pod_count=1,
         assert wl_result["status"]["currentNumberScheduled"] == pod_count
     if type == "cronJob":
         assert len(wl_result["status"]["active"]) >= pod_count
+        return
+    if type == "job":
+        assert wl_result["status"]["active"] == 1
         return
     for key, value in workload.workloadLabels.items():
         label = key + "=" + value
@@ -852,7 +861,7 @@ def exec_shell_command(ip, port, cmd, password, user="root", sshKey=None):
 
 def wait_for_ns_to_become_active(client, ns, timeout=DEFAULT_TIMEOUT):
     start = time.time()
-    time.sleep(2)
+    time.sleep(10)
     nss = client.list_namespace(uuid=ns.uuid).data
     assert len(nss) == 1
     ns = nss[0]
