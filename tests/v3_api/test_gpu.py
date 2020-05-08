@@ -845,6 +845,7 @@ def test_gpu_count_with_quota_overrun():
     con = [{"name": "test1",
             "image": GPU_IMAGE,
             "resources": {"requests": {"nvidia.com/gpu": "3"}, "limits": {"nvidia.com/gpu": "3"}}}]
+
     workload = p_client.create_workload(name=name,
                                         containers=con,
                                         namespaceId=ns.id,
@@ -1258,7 +1259,7 @@ def test_gpu_count_with_quota_all():
     p = client.reload(project)
     ns1 = c_client.reload(ns)
     p_annotations = p.annotations
-    print(p.annotations)
+
     assert json.loads(p_annotations["field.cattle.io/resourceQuotaUsage"])["requestsGpuCount"] == \
            con[0]["resources"]["limits"]["nvidia.com/gpu"]
     ns_annotations = ns1.annotations
