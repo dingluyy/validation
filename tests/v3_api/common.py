@@ -14,10 +14,10 @@ from lib.aws import AmazonWebServices
 DEFAULT_TIMEOUT = 500
 DEFAULT_MULTI_CLUSTER_APP_TIMEOUT = 300
 
-CATTLE_TEST_URL = os.environ.get('CATTLE_TEST_URL', "http://localhost:80")
+CATTLE_TEST_URL = os.environ.get('CATTLE_TEST_URL', "")
 CATTLE_API_URL = CATTLE_TEST_URL + "/v3"
 
-ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN', "None")
+ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN', "")
 kube_fname = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                           "k8s_kube_config")
 MACHINE_TIMEOUT = float(os.environ.get('RANCHER_MACHINE_TIMEOUT', "1200"))
@@ -993,6 +993,7 @@ def validate_hostPort(p_client, workload, source_port, cluster):
             if pod.nodeId == node.id:
                 target_name_list.append(pod.name)
                 break
+        time.sleep(100)
         if len(target_name_list) > 0:
             host_ip = node.externalIpAddress
             curl_cmd = " http://" + host_ip + ":" + \
