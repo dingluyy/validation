@@ -1,5 +1,5 @@
-from .entfunc import *
 import pytest
+from .entfunc import *
 
 k8s_version = os.environ.get('RANCHER_K8S_VERSION', "v1.15.5-rancher1-1")
 RANCHER_CLEANUP_CLUSTER = os.environ.get('RANCHER_CLEANUP_CLUSTER', "True")
@@ -108,25 +108,34 @@ C_MONITORING_ANSWERS = {
         "prometheus.persistent.useReleaseName": "true"
     }
 
+
 @pytest.mark.skip
 def test_cluster_enable_gpu():
     cluster = validate_gpu_cluster(k8s_version, plugin="canal", nodeport="32666",
                                    node_count=1, node_roles=[["etcd", "worker", "controlplane"]])
     validate_cluster_support_gpu(cluster, ADMIN_TOKEN)
 
+
 def test_add_share_gpu_label():
     client, cluster = get_admin_client_and_cluster()
     label = {'gpu.cattle.io/type':'share'}
-    result, node = check_add_gpu_label(client, GPU_MEM_NODE, GPUSHARE_PLUGIN, label, "gpu.cattle.io/type", True)
+    result, node = check_add_gpu_label(client, GPU_MEM_NODE, GPUSHARE_PLUGIN, label, "gpu.cattle.io/type")
     assert result
+
 
 def test_delete_share_gpu_label():
     client, cluster = get_admin_client_and_cluster()
     label = {'gpu.cattle.io/type': 'share'}
-    result, node = check_add_gpu_label(client, GPU_MEM_NODE, GPUSHARE_PLUGIN, label)
-    assert result
+    nodes = client.list_node(name=GPU_MEM_NODE).data
+    assert len(nodes) > 0
+    node = nodes[0]
+    node_labels = node.labels.__dict__
+    if  "gpu.cattle.io/type" not in node_labels or node_labels['gpu.cattle.io/type'] != 'share':
+        result, node = check_add_gpu_label(client, GPU_MEM_NODE, GPUSHARE_PLUGIN, label, "gpu.cattle.io/type")
+        assert result
 
     check_delete_gpu_label(client, node, GPUSHARE_PLUGIN, "gpu.cattle.io/type")
+
 
 def test_modify_share_gpu_label():
     client, cluster = get_admin_client_and_cluster()
@@ -137,19 +146,27 @@ def test_modify_share_gpu_label():
     modify_result = check_modify_gpu_label(client, node, GPUSHARE_PLUGIN, NVIDIA_GPU_PLUGIN, "gpu.cattle.io/type", "default")
     assert modify_result
 
+
 def test_add_default_gpu_label():
     client, cluster = get_admin_client_and_cluster()
     label = {'gpu.cattle.io/type': 'default'}
-    result, _ = check_add_gpu_label(client, GPU_COUNT_NODE, NVIDIA_GPU_PLUGIN, label, "gpu.cattle.io/type", True)
+    result, _ = check_add_gpu_label(client, GPU_COUNT_NODE, NVIDIA_GPU_PLUGIN, label, "gpu.cattle.io/type")
     assert result
+
 
 def test_delete_default_gpu_label():
     client, cluster = get_admin_client_and_cluster()
     label = {'gpu.cattle.io/type': 'default'}
-    result, node = check_add_gpu_label(client, GPU_COUNT_NODE, NVIDIA_GPU_PLUGIN, label)
-    assert result
+    nodes = client.list_node(name=GPU_COUNT_NODE).data
+    assert len(nodes) > 0
+    node = nodes[0]
+    node_labels = node.labels.__dict__
+    if "gpu.cattle.io/type" not in node_labels or node_labels['gpu.cattle.io/type'] != 'default':
+        result, node = check_add_gpu_label(client, GPU_COUNT_NODE, NVIDIA_GPU_PLUGIN, label)
+        assert result
 
     check_delete_gpu_label(client, node, NVIDIA_GPU_PLUGIN, "gpu.cattle.io/type")
+
 
 def test_modify_default_gpu_label():
     client, cluster = get_admin_client_and_cluster()
@@ -160,6 +177,7 @@ def test_modify_default_gpu_label():
     modify_result = check_modify_gpu_label(client, node, NVIDIA_GPU_PLUGIN,
                                            GPUSHARE_PLUGIN, "gpu.cattle.io/type", "share")
     assert modify_result
+
 
 def test_gpu_mem_unused():
     client, cluster = get_admin_client_and_cluster()
@@ -187,6 +205,7 @@ def test_gpu_mem_unused():
     assert wl_con.resources.requests['rancher.io/gpu-mem'] == con[0]["resources"]["requests"]["rancher.io/gpu-mem"]
     assert wl_con.resources.limits['rancher.io/gpu-mem'] == con[0]["resources"]["limits"]["rancher.io/gpu-mem"]
 
+
 def test_gpu_mem_used2():
     client, cluster = get_admin_client_and_cluster()
     label = {'gpu.cattle.io/type': 'share'}
@@ -212,6 +231,7 @@ def test_gpu_mem_used2():
     print(con[0]["resources"]["requests"])
     assert wl_con.resources.requests['rancher.io/gpu-mem'] == con[0]["resources"]["requests"]["rancher.io/gpu-mem"]
     assert wl_con.resources.limits['rancher.io/gpu-mem'] == con[0]["resources"]["limits"]["rancher.io/gpu-mem"]
+
 
 def test_gpu_mem_overrun():
     client, cluster = get_admin_client_and_cluster()
@@ -262,6 +282,7 @@ def test_gpu_mem_overrun():
             print(project.name)
             client.delete(project)
 
+
 def test_gpu_mem_count():
     client, cluster = get_admin_client_and_cluster()
     label = {'gpu.cattle.io/type': 'share'}
@@ -306,6 +327,7 @@ def test_gpu_mem_count():
     client.delete(project)
     check_delete_gpu_label(client, node, GPUSHARE_PLUGIN, "gpu.cattle.io/type")
 
+
 def test_gpu_count_unused():
     client, cluster = get_admin_client_and_cluster()
     label = {'gpu.cattle.io/type': 'default'}
@@ -332,6 +354,7 @@ def test_gpu_count_unused():
     assert wl_con.resources.requests['nvidia.com/gpu'] == con[0]["resources"]["requests"]["nvidia.com/gpu"]
     assert wl_con.resources.limits['nvidia.com/gpu'] == con[0]["resources"]["limits"]["nvidia.com/gpu"]
 
+
 def test_gpu_count_used2():
     client, cluster = get_admin_client_and_cluster()
     label = {'gpu.cattle.io/type': 'default'}
@@ -357,6 +380,7 @@ def test_gpu_count_used2():
     print(con[0]["resources"]["requests"])
     assert wl_con.resources.requests['nvidia.com/gpu'] == con[0]["resources"]["requests"]["nvidia.com/gpu"]
     assert wl_con.resources.limits['nvidia.com/gpu'] == con[0]["resources"]["limits"]["nvidia.com/gpu"]
+
 
 def test_gpu_count_overrun():
     client, cluster = get_admin_client_and_cluster()
@@ -407,6 +431,7 @@ def test_gpu_count_overrun():
             print(project.name)
             client.delete(project)
 
+
 def test_gpu_count_mem():
     client, cluster = get_admin_client_and_cluster()
     label = {'gpu.cattle.io/type': 'default'}
@@ -453,6 +478,7 @@ def test_gpu_count_mem():
     client.delete(project)
     check_delete_gpu_label(client, node, NVIDIA_GPU_PLUGIN, "gpu.cattle.io/type")
 
+
 def test_add_gpu_mem_quota_default_ns():
     client, cluster = get_admin_client_and_cluster()
     c_client = get_cluster_client_for_token(cluster, ADMIN_TOKEN)
@@ -476,6 +502,7 @@ def test_add_gpu_mem_quota_default_ns():
     assert ns.resourceQuota.limit.requestsGpuMemory == share_namespace_resource_quota["limit"]["requestsGpuMemory"]
 
     client.delete(project)
+
 
 def test_add_gpu_mem_quota_spec_ns():
     client, cluster = get_admin_client_and_cluster()
@@ -504,6 +531,7 @@ def test_add_gpu_mem_quota_spec_ns():
     assert ns.resourceQuota.limit.requestsGpuMemory == quota["limit"]["requestsGpuMemory"]
 
     client.delete(project)
+
 
 def test_edit_gpu_mem_quota_spec_ns():
     client, cluster = get_admin_client_and_cluster()
@@ -538,6 +566,7 @@ def test_edit_gpu_mem_quota_spec_ns():
     assert ns1.resourceQuota.limit.requestsGpuMemory == "2"
 
     client.delete(project)
+
 
 def test_gpu_mem_with_quota():
     client, cluster = get_admin_client_and_cluster()
@@ -587,6 +616,7 @@ def test_gpu_mem_with_quota():
     p_client.delete(workload)
     wait_for_wl_delete(p_client, workload)
     client.delete(project)
+
 
 def test_gpu_mem_with_quota_overrun():
     client, cluster = get_admin_client_and_cluster()
@@ -644,6 +674,7 @@ def test_gpu_mem_with_quota_overrun():
     wait_for_wl_delete(p_client, workload)
     client.delete(project)
 
+
 def test_add_gpu_count_quota_default_ns():
     client, cluster = get_admin_client_and_cluster()
     c_client = get_cluster_client_for_token(cluster, ADMIN_TOKEN)
@@ -667,6 +698,7 @@ def test_add_gpu_count_quota_default_ns():
     assert ns.resourceQuota.limit.requestsGpuCount == default_namespace_resource_quota["limit"]["requestsGpuCount"]
 
     client.delete(project)
+
 
 def test_add_gpu_count_quota_spec_ns():
     client, cluster = get_admin_client_and_cluster()
@@ -695,6 +727,7 @@ def test_add_gpu_count_quota_spec_ns():
     assert ns.resourceQuota.limit.requestsGpuCount == quota["limit"]["requestsGpuCount"]
 
     client.delete(project)
+
 
 def test_edit_gpu_count_quota_spec_ns():
     client, cluster = get_admin_client_and_cluster()
@@ -729,6 +762,7 @@ def test_edit_gpu_count_quota_spec_ns():
     assert ns1.resourceQuota.limit.requestsGpuCount == "2"
 
     client.delete(project)
+
 
 def test_gpu_count_with_quota():
     client, cluster = get_admin_client_and_cluster()
@@ -777,6 +811,7 @@ def test_gpu_count_with_quota():
     wait_for_wl_delete(p_client, workload)
     client.delete(project)
 
+
 def test_gpu_count_with_quota_overrun():
     client, cluster = get_admin_client_and_cluster()
     label = {'gpu.cattle.io/type': 'default'}
@@ -809,7 +844,7 @@ def test_gpu_count_with_quota_overrun():
     name = random_test_name("gpu")
     con = [{"name": "test1",
             "image": GPU_IMAGE,
-            "resources": {"requests": {"nvidia.com/gpu": "2"}, "limits": {"nvidia.com/gpu": "2"}}}]
+            "resources": {"requests": {"nvidia.com/gpu": "3"}, "limits": {"nvidia.com/gpu": "3"}}}]
     workload = p_client.create_workload(name=name,
                                         containers=con,
                                         namespaceId=ns.id,
@@ -833,6 +868,7 @@ def test_gpu_count_with_quota_overrun():
     wait_for_wl_delete(p_client, workload)
     client.delete(project)
 
+
 def test_enable_gpu_monitor():
     client, cluster = get_admin_client_and_cluster()
 
@@ -854,19 +890,27 @@ def test_enable_gpu_monitor():
     wait_for_monitor_app_to_active(p_client, MONITORING_OPERATOR_APP)
     wait_for_app_to_active(p_client, GPU_MONITORING_APP)
 
-def test_add_gpu_monitor_label():
-    client, cluster = get_admin_client_and_cluster()
-    label = {'gpumonitoring.cattle.io': 'true'}
-    result, node = check_add_gpu_label(client, GPU_MEM_NODE, "gpu-dcgm-exporter", label, "gpumonitoring.cattle.io", True)
-    assert result
 
-def test_delete_gpu_monitor_label():
+def test_add_gpu_monitor_label():
     client, cluster = get_admin_client_and_cluster()
     label = {'gpumonitoring.cattle.io': 'true'}
     result, node = check_add_gpu_label(client, GPU_MEM_NODE, "gpu-dcgm-exporter", label, "gpumonitoring.cattle.io")
     assert result
 
+
+def test_delete_gpu_monitor_label():
+    client, cluster = get_admin_client_and_cluster()
+    label = {'gpumonitoring.cattle.io': 'true'}
+    nodes = client.list_node(name=GPU_MEM_NODE).data
+    assert len(nodes) > 0
+    node = nodes[0]
+    node_labels = node.labels.__dict__
+    if "gpumonitoring.cattle.io" not in node_labels or node_labels['gpumonitoring.cattle.io'] != True:
+        result, node = check_add_gpu_label(client, GPU_MEM_NODE, "gpu-dcgm-exporter", label, "gpumonitoring.cattle.io")
+        assert result
+
     check_delete_gpu_label(client, node, "gpu-dcgm-exporter", "gpumonitoring.cattle.io")
+
 
 def test_modify_gpu_monitor_label():
     client, cluster = get_admin_client_and_cluster()
@@ -896,6 +940,7 @@ def test_modify_gpu_monitor_label():
 
     del result_labels['gpumonitoring.cattle.io']
     client.update(result_node, labels=result_labels)
+
 
 def test_disable_monitor():
     client, cluster = get_admin_client_and_cluster()
@@ -932,6 +977,7 @@ def test_disable_monitor():
 
         if len(app1.data) == 0 and len(app2.data) == 0 and len(app3.data) == 0:
             break
+
 
 def test_disable_gpu_monitor():
     client, cluster = get_admin_client_and_cluster()
@@ -970,6 +1016,8 @@ def test_disable_gpu_monitor():
         if len(app3.data) == 0:
             break
 
+
+@pytest.mark.skip
 def test_cluster_disable_gpu():
     client, cluster = get_admin_client_and_cluster()
     client.update(cluster, enableGPUManagement=False)
@@ -989,6 +1037,7 @@ def test_cluster_disable_gpu():
                 "Timed out waiting for state to get to active")
         time.sleep(.5)
         apps = client.list_app(name="cluster-gpu-management").data
+
 
 def test_gpu_mem_with_quota_part():
     client, cluster = get_admin_client_and_cluster()
@@ -1047,6 +1096,7 @@ def test_gpu_mem_with_quota_part():
     wait_for_wl_delete(p_client, workload)
     client.delete(project)
 
+
 def test_gpu_mem_with_quota_all():
     client, cluster = get_admin_client_and_cluster()
     label = {'gpu.cattle.io/type': 'share'}
@@ -1104,6 +1154,7 @@ def test_gpu_mem_with_quota_all():
     wait_for_wl_delete(p_client, workload)
     client.delete(project)
 
+
 def test_gpu_count_with_quota_part():
     client, cluster = get_admin_client_and_cluster()
     label = {'gpu.cattle.io/type': 'default'}
@@ -1160,6 +1211,7 @@ def test_gpu_count_with_quota_part():
     wait_for_wl_delete(p_client, workload)
     client.delete(project)
 
+
 def test_gpu_count_with_quota_all():
     client, cluster = get_admin_client_and_cluster()
     label = {'gpu.cattle.io/type': 'default'}
@@ -1206,6 +1258,7 @@ def test_gpu_count_with_quota_all():
     p = client.reload(project)
     ns1 = c_client.reload(ns)
     p_annotations = p.annotations
+    print(p.annotations)
     assert json.loads(p_annotations["field.cattle.io/resourceQuotaUsage"])["requestsGpuCount"] == \
            con[0]["resources"]["limits"]["nvidia.com/gpu"]
     ns_annotations = ns1.annotations
@@ -1215,6 +1268,7 @@ def test_gpu_count_with_quota_all():
     p_client.delete(workload)
     wait_for_wl_delete(p_client, workload)
     client.delete(project)
+
 
 def validate_gpu_cluster(k8s_version, plugin="canal", nodeport="32666", node_count=1, node_roles=[["etcd", "worker", "controlplane"]]):
     rke_config["kubernetesVersion"] = k8s_version
@@ -1286,6 +1340,7 @@ def validate_gpu_cluster(k8s_version, plugin="canal", nodeport="32666", node_cou
 
     return cluster
 
+
 def validate_cluster_support_gpu(cluster,token):
     project = cluster.list_project(name="System")
     p_client = get_project_client_for_token(project, token)
@@ -1300,6 +1355,7 @@ def validate_cluster_support_gpu(cluster,token):
     assert len(apps) == 1
     app = wait_for_app_to_active(p_client, apps[0])
     assert app.state == "active"
+
 
 def wait_for_app_to_active(client, app, timeout=DEFAULT_TIMEOUT):
     apps = client.list_app(name=app).data
@@ -1321,6 +1377,7 @@ def wait_for_app_to_active(client, app, timeout=DEFAULT_TIMEOUT):
         app1 = apps[0]
     return app1
 
+
 def wait_for_wl_delete(client, workload, timeout=DEFAULT_TIMEOUT):
     workloads = client.list_workload(name=workload).data
     start = time.time()
@@ -1332,6 +1389,7 @@ def wait_for_wl_delete(client, workload, timeout=DEFAULT_TIMEOUT):
         workloads = client.list_workload(name=workload).data
     return workloads
 
+
 def wait_for_pod_delete(client, workload, timeout=DEFAULT_TIMEOUT):
     pods = client.list_pod(workloadId=workload.id).data
     start = time.time()
@@ -1342,6 +1400,7 @@ def wait_for_pod_delete(client, workload, timeout=DEFAULT_TIMEOUT):
         time.sleep(.5)
         pods = client.list_pod(workloadId=workload.id).data
     return pods
+
 
 def check_add_gpu_label(client, node_name, wl, label, key="gpu.cattle.io/type", deleteFlag=False):
     '''
@@ -1386,6 +1445,7 @@ def check_add_gpu_label(client, node_name, wl, label, key="gpu.cattle.io/type", 
 
     return result, node
 
+
 def check_delete_gpu_label(client, node, wl, key):
     node, node_labels = get_node_label(client, node)
     del node_labels[key]
@@ -1406,6 +1466,7 @@ def check_delete_gpu_label(client, node, wl, key):
     _, node_labels = get_node_label(client, node)
     print(type(node_labels))
     assert key not in node_labels.keys()
+
 
 def check_modify_gpu_label(client, node, old_wl, new_wl, key, value):
     node, node_labels = get_node_label(client, node)
@@ -1438,10 +1499,10 @@ def check_modify_gpu_label(client, node, old_wl, new_wl, key, value):
     node, node_labels = get_node_label(client, node)
     assert node_labels['gpu.cattle.io/type'] == value
 
-    del node_labels[key]
-    client.update(node, labels=node_labels)
+    check_delete_gpu_label(client, node, new_wl, key)
 
     return result
+
 
 def get_node_label(client, node):
     nodes = client.list_node(id=node.id).data
@@ -1449,6 +1510,7 @@ def get_node_label(client, node):
     node = nodes[0]
     labels = node.labels.__dict__
     return node, labels
+
 
 def validate_gpu_resoucequota_kubectl(namespace, quota_type):
     '''
@@ -1468,6 +1530,7 @@ def validate_gpu_resoucequota_kubectl(namespace, quota_type):
     assert "spec" in response[0]
     quotadict = (response[0]["spec"])
     assert quotadict['hard'][quota_type] == testdict['limit'][quota_type]
+
 
 def wait_for_monitor_app_to_active(client, app,
                            timeout=DEFAULT_MULTI_CLUSTER_APP_TIMEOUT):
