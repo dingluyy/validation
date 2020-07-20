@@ -6,7 +6,6 @@ import yaml
 DEFAULT_NODEPOOL_TIMEOUT = 300
 TEST_INTERNAL_IMAGE = os.environ.get('RANCHER_TEST_IMAGE', "busybox:musl")
 TEST_INGRESS_TARGET_PORT = os.environ.get('RANCHER_TEST_INGRESS_TARGET_PORT', "8088")
-DEFAULT_MASTER = os.environ.get('RANCHER_TEST_SUBNET_MASTER', "ens4")
 MACVLAN_SERVICE_SUFFIX="-macvlan"
 macvlan_subnet_fname = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                   random_test_name("test-macvlan-subnet") + ".yaml")
@@ -122,18 +121,9 @@ def get_status(url):
     return r.status_code
 
 # ------ macvlan ------
-def validate_create_macvlansubnet(subnet):
-    '''
-    desc: check macvlansubnet exist
-    :param subnet: macvlansubnet name
-    :return: 0 exist ; 1 not exist
-    '''
-    exec_result = get_macvlansubnet(subnet)
-    return exec_result
-
-def get_macvlansubnet(subnet):
+def get_macvlansubnet(subnet, json_out=True, stderr=False, stderrcode=False):
     cmd = "get macvlansubnet -n kube-system " + subnet
-    exec_result = execute_kubectl_cmd_with_code(cmd, json_out=False, stderrcode=True)
+    exec_result = execute_kubectl_cmd_with_code(cmd, json_out, stderr, stderrcode)
     return exec_result
 
 def create_macvlan_workload(client,cluster,p_client,ns,ip,mac,subnet,cidr,img,scale=1,node=None):
@@ -227,7 +217,6 @@ def validate_macvlan_workload(p_client, workload, type, ns_name, pod_count, wait
     if type == "cronJob":
         time.sleep(wait_for_cron_pods)
     pods = p_client.list_pod(workloadId=workload.id).data
-    print("validate_macvlan_workload pods :",pods)
     assert len(pods) == pod_count
 
     kind=get_macvlan_ip_mac_kind(ips,macs)
@@ -242,6 +231,9 @@ def validate_macvlan_workload(p_client, workload, type, ns_name, pod_count, wait
             assert wl_result["status"]["currentNumberScheduled"] == pod_count
         if type == "cronJob":
             assert len(wl_result["status"]["active"]) >= pod_count
+            return
+        if type == "job":
+            assert wl_result["status"]["active"] == pod_count
             return
         for key, value in workload.workloadLabels.items():
             label = key + "=" + value
@@ -320,7 +312,7 @@ def validate_service(ns, service):
     :return: 0 exist ; 1 not exist
     '''
     service_cmd = "get service -n " + ns + " " + service
-    result = execute_kubectl_cmd_with_code(service_cmd, json_out=False, stderrcode=True)
+    result = execute_kubectl_cmd_with_code(service_cmd, json_out=False, stderr=False, stderrcode=True)
     return result
 
 def get_events(ns_name,object_name,object_kind):
@@ -356,7 +348,7 @@ def validate_wl_pod(pods,kind,subnet,busybox_ns,ips,macs,nginx_ns=None,nginx_wor
                 if len(spec["ranges"]) != 0 :
                     result = check_ip_in_ranges(ip,spec["ranges"])
                     assert result
-        ip_result=validate_macvlanIP(busybox_ns,pod)
+        ip_result=validate_macvlanIP(busybox_ns,pod['metadata'])
         assert ip_result == 0
         if (nginx_ns != None) and (nginx_workload != None):
             nslookup=validate_macvlan_service_nslookup(pod,busybox_ns,nginx_ns,nginx_workload.name+MACVLAN_SERVICE_SUFFIX)
@@ -387,7 +379,7 @@ def validate_wl_pod(pods,kind,subnet,busybox_ns,ips,macs,nginx_ns=None,nginx_wor
 
 def get_macvlansubnet_info(subnet):
     cmd = "get  macvlansubnet -n kube-system " + subnet
-    exec_result = execute_kubectl_cmd_with_code(cmd, json_out=True, stderrcode=False)
+    exec_result = execute_kubectl_cmd_with_code(cmd, json_out=True, stderr=False, stderrcode=False)
     print(exec_result["spec"])
     return exec_result["spec"]
 
@@ -435,8 +427,8 @@ def validate_macvlanIP(ns, pod):
     '''
     print("validate_macvlanIP pod",pod)
     print("validate_macvlanIP ns",ns)
-    cmd = "get MacvlanIP -n " + ns["name"] + " " + pod["metadata"]["name"]
-    exec_result = execute_kubectl_cmd_with_code(cmd, json_out=False, stderrcode=True)
+    cmd = "get MacvlanIP -n " + ns["name"] + " " + pod["name"]
+    exec_result = execute_kubectl_cmd_with_code(cmd, json_out=False, stderr=False, stderrcode=True)
     return exec_result
 
 def check_pod_route(pod, ns, routes):
@@ -453,7 +445,7 @@ def check_pod_route(pod, ns, routes):
 def get_pod_spec_route(pod, ns, dst):
     destination = dst.split("/")[0]
     cmd = "exec " + pod + " -n " + ns +" -- route -n | grep " + destination + " | tr -s [:space:]"
-    result = execute_kubectl_cmd_with_code(cmd, json_out=False, stderrcode=False)
+    result = execute_kubectl_cmd_with_code(cmd, json_out=False, stderr=False, stderrcode=False)
     result = result.split(" ")
     return result
 
@@ -472,7 +464,7 @@ def validate_macvlan_service_nslookup(pod, busybox_ns, nginx_ns, service):
 def get_kubectl_execCmd_result(type, ns, cmd):
     exec_cmd = "exec " + type + " -n " + ns + cmd
     print("kubectl exec cmd : ", exec_cmd)
-    result = execute_kubectl_cmd_with_code(exec_cmd, json_out=False, stderrcode=True)
+    result = execute_kubectl_cmd_with_code(exec_cmd, json_out=False, stderr=False, stderrcode=True)
     print("kubectl exec result : ", result)
     return result
 
@@ -524,37 +516,6 @@ def validate_ip_in_subnet(ip, subnet):
 
     assert (ip_num & mask_bin) == (subnet_num & mask_bin)
 
-def create_macvlan_subnet_yaml(name,project,master,vlan,cidr,gateway,ranges,routes,podDefaultGateway):
-    yaml_fname=macvlan_subnet_fname
-    macvlan_subnet_yaml=get_macvlan_subnet_template(name,project,master,vlan,cidr,gateway,ranges,routes,podDefaultGateway)
-    print(macvlan_subnet_yaml)
-    with open(yaml_fname, 'w') as fp:
-        yaml.dump(macvlan_subnet_yaml,fp,default_flow_style=False)
-    return yaml_fname
-
-def get_macvlan_subnet_template(name,project,master,vlan,cidr,gateway,ranges,routes,podDefaultGateway):
-    maxvlan_subnet_template = {
-        "apiVersion": "macvlan.cluster.cattle.io/v1",
-        "kind": "MacvlanSubnet",
-        "metadata": {
-            "name": name,
-            "namespace": "kube-system",
-            "labels": {
-                "project": project
-            }
-        },
-        "spec": {
-            "master": master,
-            "vlan": vlan,
-            "cidr": cidr,
-            "mode": "bridge",
-            "gateway": gateway,
-            "ranges": ranges,
-            "routes": routes,
-            "podDefaultGateway": podDefaultGateway
-        }
-    }
-    return maxvlan_subnet_template
 
 def validate_macvlan_cluster(client, cluster, token,intermediate_state="provisioning",
     check_intermediate_state=True, skipIngresscheck=False,
@@ -579,7 +540,9 @@ def validate_macvlan_cluster(client, cluster, token,intermediate_state="provisio
     # Create Daemon set workload and have an Ingress with Workload
     # rule pointing to this daemonset
     create_kubeconfig(cluster)
-    project = cluster.list_project(name="System")
+    projects = client.list_project(name="System",clusterId=cluster.id).data
+    assert len(projects) == 1
+    project = projects[0]
     p_client = get_project_client_for_token(project, token)
 
     ###kube-multus-ds-amd64/network-cni-ds-amd64/ network-controller
@@ -621,7 +584,6 @@ def validate_wl_byName(p_client, wl_name, ns_name, type, wait_for_cron_pods=60):
     if type == "cronJob":
         time.sleep(wait_for_cron_pods)
     pods = p_client.list_pod(workloadId=workload.id).data
-    print("validate_workload pods : ",pods)
     pod_count = len(pods)
     assert pod_count > 0
     for pod in pods:
@@ -635,9 +597,10 @@ def validate_wl_byName(p_client, wl_name, ns_name, type, wait_for_cron_pods=60):
     if type == "cronJob":
         assert len(wl_result["status"]["active"]) >= pod_count
         return
+    label = ""
     for key, value in workload.workloadLabels.items():
-        label = key + "=" + value
-    get_pods = "get pods -l" + label + " -n " + ns_name
+        label = label + key + "=" + value + ","
+    get_pods = "get pods -l" + label[:-1] + " -n " + ns_name
     pods_result = execute_kubectl_cmd(get_pods)
     assert len(pods_result["items"]) == pod_count
     for pod in pods_result["items"]:
@@ -660,7 +623,7 @@ def validate_macvlan_yaml(ds, master):
 
 def get_macvlan_yaml(ds):
     cmd = "get ds " + ds + " -n kube-system -o yaml"
-    code=execute_kubectl_cmd_with_code(cmd, json_out=False, stderrcode=True)
+    code=execute_kubectl_cmd_with_code(cmd, json_out=False, stderr=False, stderrcode=True)
     if code == 1 :
         return code
     else:
@@ -672,7 +635,7 @@ def validate_support_macvlansubnet():
     desc: check cluster support macvlan
     :return: 0 support ; 1 not support
     '''
-    exec_result=get_macvlansubnet("")
+    exec_result=get_macvlansubnet("", False, False, True)
     return exec_result
 
 def get_role_nodes_byClient(client, cluster, role):
@@ -803,3 +766,36 @@ def run_command_with_stderr_code(command):
         returncode = e.returncode
     print(returncode)
     return returncode
+
+# ------ deprecated ------
+def create_macvlan_subnet_yaml(name,project,master,vlan,cidr,gateway,ranges,routes,podDefaultGateway):
+    yaml_fname=macvlan_subnet_fname
+    macvlan_subnet_yaml=get_macvlan_subnet_template(name,project,master,vlan,cidr,gateway,ranges,routes,podDefaultGateway)
+    print(macvlan_subnet_yaml)
+    with open(yaml_fname, 'w') as fp:
+        yaml.dump(macvlan_subnet_yaml,fp,default_flow_style=False)
+    return yaml_fname
+
+def get_macvlan_subnet_template(name,project,master,vlan,cidr,gateway,ranges,routes,podDefaultGateway):
+    maxvlan_subnet_template = {
+        "apiVersion": "macvlan.cluster.cattle.io/v1",
+        "kind": "MacvlanSubnet",
+        "metadata": {
+            "name": name,
+            "namespace": "kube-system",
+            "labels": {
+                "project": project
+            }
+        },
+        "spec": {
+            "master": master,
+            "vlan": vlan,
+            "cidr": cidr,
+            "mode": "bridge",
+            "gateway": gateway,
+            "ranges": ranges,
+            "routes": routes,
+            "podDefaultGateway": podDefaultGateway
+        }
+    }
+    return maxvlan_subnet_template

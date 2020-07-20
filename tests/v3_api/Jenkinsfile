@@ -16,47 +16,49 @@ node {
     branch = "${env.branch}"
   }
 
-  wrap([$class: 'AnsiColorBuildWrapper', 'colorMapName': 'XTerm', 'defaultFg': 2, 'defaultBg':1]) {
-    stage('Checkout') {
-      deleteDir()
-      checkout([
+  timestamps {
+    wrap([$class: 'AnsiColorBuildWrapper', 'colorMapName': 'XTerm', 'defaultFg': 2, 'defaultBg':1]) {
+      stage('Checkout') {
+        deleteDir()
+        checkout([
                 $class: 'GitSCM',
                 branches: [[name: "*/${branch}"]],
                 extensions: scm.extensions + [[$class: 'CleanCheckout']],
                 userRemoteConfigs: scm.userRemoteConfigs
               ])
-    }
-
-    stage('Configure and Build') {
-      if (env.AWS_SSH_PEM_KEY && env.AWS_SSH_KEY_NAME) {
-        dir(".ssh") {
-          def decoded = new String(AWS_SSH_PEM_KEY.decodeBase64())
-          writeFile file: AWS_SSH_KEY_NAME, text: decoded
-        }
       }
-      sh "./tests/v3_api/scripts/configure.sh"
-      sh "./tests/v3_api/scripts/build.sh"
-    }
-    try {
-      stage('Run Validation Tests') {
-        try {
-          sh "docker run --name ${testContainer}  --env-file .env " +
+
+      stage('Configure and Build') {
+        if (env.AWS_SSH_PEM_KEY && env.AWS_SSH_KEY_NAME) {
+          dir(".ssh") {
+            def decoded = new String(AWS_SSH_PEM_KEY.decodeBase64())
+            writeFile file: AWS_SSH_KEY_NAME, text: decoded
+          }
+        }
+        sh "./tests/v3_api/scripts/configure.sh"
+        sh "./tests/v3_api/scripts/build.sh"
+      }
+      try {
+        stage('Run Validation Tests') {
+          try {
+            sh "docker run --name ${testContainer}  --env-file .env " +
              "${imageName} /bin/bash -c \'pytest -v -s --junit-xml=${testResultsOut} ${PYTEST_OPTIONS} ${testsDir}\'"
-        } catch(err) {
-          echo 'Test run had failures. Collecting results...'
+          } catch(err) {
+            echo 'Test run had failures. Collecting results...'
+          }
         }
-      }
 
-      stage('Test Report') {
-        sh "docker cp ${testContainer}:${rootPath}${testResultsOut} ."
-        step([$class: 'JUnitResultArchiver', testResults: "**/${testResultsOut}"])
+        stage('Test Report') {
+          sh "docker cp ${testContainer}:${rootPath}${testResultsOut} ."
+          step([$class: 'JUnitResultArchiver', testResults: "**/${testResultsOut}"])
+          sh "docker rm -v ${testContainer}"
+          sh "docker rmi ${imageName}"
+        }
+      } catch(err){
+        sh "docker stop ${testContainer}"
         sh "docker rm -v ${testContainer}"
         sh "docker rmi ${imageName}"
       }
-    } catch(err){
-      sh "docker stop ${testContainer}"
-      sh "docker rm -v ${testContainer}"
-      sh "docker rmi ${imageName}"
     }
   }
 }
