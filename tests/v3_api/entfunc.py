@@ -767,14 +767,6 @@ def run_command_with_stderr_code(command):
     print(returncode)
     return returncode
 
-# ------ deprecated ------
-def create_macvlan_subnet_yaml(name,project,master,vlan,cidr,gateway,ranges,routes,podDefaultGateway):
-    yaml_fname=macvlan_subnet_fname
-    macvlan_subnet_yaml=get_macvlan_subnet_template(name,project,master,vlan,cidr,gateway,ranges,routes,podDefaultGateway)
-    print(macvlan_subnet_yaml)
-    with open(yaml_fname, 'w') as fp:
-        yaml.dump(macvlan_subnet_yaml,fp,default_flow_style=False)
-    return yaml_fname
 
 def get_macvlan_subnet_template(name,project,master,vlan,cidr,gateway,ranges,routes,podDefaultGateway):
     maxvlan_subnet_template = {
@@ -799,4 +791,3 @@ def get_macvlan_subnet_template(name,project,master,vlan,cidr,gateway,ranges,rou
         }
     }
     return maxvlan_subnet_template
-    return returncode
