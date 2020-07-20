@@ -220,7 +220,6 @@ def validate_workload(p_client, workload, type, ns_name, pod_count=1,
     if type == "cronJob":
         time.sleep(wait_for_cron_pods)
     pods = p_client.list_pod(workloadId=workload.id).data
-    print("validate_workload pods : ",pods)
     assert len(pods) == pod_count
     for pod in pods:
         wait_for_pod_to_running(p_client, pod)
@@ -232,6 +231,9 @@ def validate_workload(p_client, workload, type, ns_name, pod_count=1,
         assert wl_result["status"]["currentNumberScheduled"] == pod_count
     if type == "cronJob":
         assert len(wl_result["status"]["active"]) >= pod_count
+        return
+    if type == "job":
+        assert wl_result["status"]["active"] == pod_count
         return
     for key, value in workload.workloadLabels.items():
         label = key + "=" + value
@@ -314,7 +316,6 @@ def execute_kubectl_cmd(cmd, json_out=True, stderr=False):
         result = run_command(command)
     if json_out:
         result = json.loads(result)
-    print(result)
     return result
 
 
@@ -1168,3 +1169,246 @@ def validate_response_app_endpoint(p_client, appId):
             except requests.ConnectionError:
                 print("failed to connect")
                 assert False, "failed to connect to the app"
+
+
+def create_deployment_wl(p_client, ns, img, annotations={}, scale=1, node=None):
+    name = random_test_name("deployment")
+    con = [{
+        "initContainer": False,
+        "restartCount": 0,
+        "stdin": True,
+        "stdinOnce": False,
+        "tty": True,
+        "type": "container",
+        "privileged": False,
+        "allowPrivilegeEscalation": False,
+        "readOnly": False,
+        "runAsNonRoot": False,
+        "namespaceId": ns.name,
+        "imagePullPolicy": "Always",
+        "environmentFrom": [],
+        "resources": {
+            "requests": {},
+            "limits": {}
+        },
+        "capAdd": [],
+        "capDrop": [],
+        "image": img,
+        "livenessProbe": None,
+        "name": name,
+        "volumeMounts": []
+    }]
+    dnsConfig = {"options": []}
+    deploymentConfig = {"minReadySeconds": 0, "type": "deploymentConfig", "revisionHistoryLimit": 10,
+                        "strategy": "RollingUpdate", "maxSurge": 0, "maxUnavailable": 1}
+    scheduling = {"node": {}}
+    if node != None:
+        scheduling = {"node": {"nodeId": node}}
+    workload = p_client.create_workload(name=name,
+                                        containers=con,
+                                        namespaceId=ns.id,
+                                        annotations=annotations,
+                                        hostAliases=[],
+                                        dnsConfig=dnsConfig,
+                                        deploymentConfig=deploymentConfig,
+                                        scheduling=scheduling,
+                                        scale=scale)
+    return workload
+
+
+def create_daemonset_wl(p_client, ns, img, annotations={}, scale=1, node=None):
+    name = random_test_name("daemonset")
+    con = [{
+        "initContainer": False,
+        "restartCount": 0,
+        "stdin": True,
+        "stdinOnce": False,
+        "tty": True,
+        "type": "container",
+        "privileged": False,
+        "allowPrivilegeEscalation": False,
+        "readOnly": False,
+        "runAsNonRoot": False,
+        "namespaceId": ns.name,
+        "imagePullPolicy": "Always",
+        "environmentFrom": [],
+        "resources": {
+            "requests": {},
+            "limits": {}
+        },
+        "capAdd": [],
+        "capDrop": [],
+        "image": img,
+        "livenessProbe": None,
+        "name": name,
+        "volumeMounts": []
+    }]
+    dnsConfig = {"options": []}
+    daemonSetConfig = {
+        "minReadySeconds": 0,
+        "type": "daemonSetConfig",
+        "revisionHistoryLimit": 10,
+        "strategy": "RollingUpdate"
+    }
+    scheduling = {"node": {}}
+    if node != None:
+        scheduling = {"node": {"nodeId": node}}
+    workload = p_client.create_workload(name=name,
+                                        containers=con,
+                                        namespaceId=ns.id,
+                                        annotations=annotations,
+                                        hostAliases=[],
+                                        dnsConfig=dnsConfig,
+                                        daemonSetConfig=daemonSetConfig,
+                                        scheduling=scheduling,
+                                        scale=scale)
+    return workload
+
+
+def create_statefulset_wl(p_client, ns, img, annotations={}, scale=1, node=None):
+    name = random_test_name("statefulset")
+    con = [{
+        "initContainer": False,
+        "restartCount": 0,
+        "stdin": True,
+        "stdinOnce": False,
+        "tty": True,
+        "type": "container",
+        "privileged": False,
+        "allowPrivilegeEscalation": False,
+        "readOnly": False,
+        "runAsNonRoot": False,
+        "namespaceId": ns.name,
+        "imagePullPolicy": "Always",
+        "environmentFrom": [],
+        "resources": {
+            "requests": {},
+            "limits": {}
+        },
+        "capAdd": [],
+        "capDrop": [],
+        "image": img,
+        "livenessProbe": None,
+        "name": name,
+        "volumeMounts": []
+    }]
+    dnsConfig = {"options": []}
+    statefulSetConfig = {
+        "type": "statefulSetConfig",
+        "podManagementPolicy": "OrderedReady",
+        "revisionHistoryLimit": 10,
+        "volumeClaimTemplates": [],
+        "strategy": "RollingUpdate",
+        "serviceName": "ss"
+    }
+    scheduling = {"node": {}}
+    if node != None:
+        scheduling = {"node": {"nodeId": node}}
+    workload = p_client.create_workload(name=name,
+                                        containers=con,
+                                        namespaceId=ns.id,
+                                        annotations=annotations,
+                                        hostAliases=[],
+                                        dnsConfig=dnsConfig,
+                                        statefulSetConfig=statefulSetConfig,
+                                        scheduling=scheduling,
+                                        scale=scale)
+    return workload
+
+
+def create_cronjob_wl(p_client, ns, img, annotations={}, scale=1, node=None):
+    name = random_test_name("cronjob")
+    con = [{
+        "initContainer": False,
+        "restartCount": 0,
+        "stdin": True,
+        "stdinOnce": False,
+        "tty": True,
+        "type": "container",
+        "privileged": False,
+        "allowPrivilegeEscalation": False,
+        "readOnly": False,
+        "runAsNonRoot": False,
+        "namespaceId": ns.name,
+        "imagePullPolicy": "Always",
+        "environmentFrom": [],
+        "resources": {
+            "requests": {},
+            "limits": {}
+        },
+        "capAdd": [],
+        "capDrop": [],
+        "image": img,
+        "livenessProbe": None,
+        "name": name,
+        "volumeMounts": []
+    }]
+    dnsConfig = {"options": []}
+    cronJobConfig = {
+        "type": "cronJobConfig",
+        "concurrencyPolicy": "Allow",
+        "failedJobsHistoryLimit": 1,
+        "schedule": "* * * * *",
+        "successfulJobsHistoryLimit": 3,
+        "jobConfig": {},
+        "suspend": False
+    }
+    scheduling = {"node": {}}
+    if node != None:
+        scheduling = {"node": {"nodeId": node}}
+    workload = p_client.create_workload(name=name,
+                                        containers=con,
+                                        namespaceId=ns.id,
+                                        annotations=annotations,
+                                        hostAliases=[],
+                                        dnsConfig=dnsConfig,
+                                        cronJobConfig=cronJobConfig,
+                                        scheduling=scheduling,
+                                        scale=scale)
+    return workload
+
+
+def create_job_wl(p_client, ns, img, annotations={}, scale=1, node=None):
+    name = random_test_name("job")
+    con = [{
+        "initContainer": False,
+        "restartCount": 0,
+        "stdin": True,
+        "stdinOnce": False,
+        "tty": True,
+        "type": "container",
+        "privileged": False,
+        "allowPrivilegeEscalation": False,
+        "readOnly": False,
+        "runAsNonRoot": False,
+        "namespaceId": ns.name,
+        "imagePullPolicy": "Always",
+        "environmentFrom": [],
+        "resources": {
+            "requests": {},
+            "limits": {}
+        },
+        "capAdd": [],
+        "capDrop": [],
+        "image": img,
+        "livenessProbe": None,
+        "name": name,
+        "volumeMounts": []
+    }]
+    dnsConfig = {"options": []}
+    jobConfig = {
+        "type": "jobConfig"
+    }
+    scheduling = {"node": {}}
+    if node != None:
+        scheduling = {"node": {"nodeId": node}}
+    workload = p_client.create_workload(name=name,
+                                        containers=con,
+                                        namespaceId=ns.id,
+                                        annotations=annotations,
+                                        hostAliases=[],
+                                        dnsConfig=dnsConfig,
+                                        jobConfig=jobConfig,
+                                        scheduling=scheduling,
+                                        scale=scale)
+    return workload
