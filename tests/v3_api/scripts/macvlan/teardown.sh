@@ -2,6 +2,8 @@
 
 nodes=(node-0 node-1 node-2 node-3 node-4)
 
+tmux kill-session
+
 ip link del dev br0 type bridge
 ps -ef | grep "dnsmasq" |grep range | grep -v grep | awk '{print $2}' | sudo xargs kill
 

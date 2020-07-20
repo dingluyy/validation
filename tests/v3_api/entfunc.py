@@ -858,4 +858,3 @@ def get_macvlan_subnet_template(name, project, master, cidr, vlan=0, gateway='',
         }
     }
     return maxvlan_subnet_template
-    return returncode
