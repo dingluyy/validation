@@ -820,7 +820,6 @@ def test_gpu_count_with_quota_overrun():
     con = [{"name": "test1",
             "image": GPU_IMAGE,
             "resources": {"requests": {"nvidia.com/gpu": "3"}, "limits": {"nvidia.com/gpu": "3"}}}]
-
     workload = p_client.create_workload(name=name,
                                         containers=con,
                                         namespaceId=ns.id,

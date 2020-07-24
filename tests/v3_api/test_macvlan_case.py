@@ -89,7 +89,6 @@ def test_macvlan_ranges():
     ranges = [{"rangeStart": CIDR_PREFIX + "10.1","rangeEnd": CIDR_PREFIX + "10.10"}]
     validate_create_macvlan_subnet(subnet_name, project.id.replace(":","-"), DEFAULT_MASTER, 2, cidr, "", ranges, [],{},0,CIDR_PREFIX+"10.1",headers)
 
-
     c_client = get_cluster_client_for_token(cluster, token)
     ns1 = create_ns(c_client, cluster, project, ns_name=None)
     p_client = get_project_client_for_token(project, token)

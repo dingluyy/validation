@@ -225,7 +225,6 @@ def validate_macvlan_workload(p_client, workload, type, ns_name, pod_count, wait
         if type == "job":
             assert wl_result["status"]["active"] == pod_count
             return
-
         for key, value in workload.workloadLabels.items():
             label = key + "=" + value
         get_pods = "get pods -l" + label + " -n " + ns_name
