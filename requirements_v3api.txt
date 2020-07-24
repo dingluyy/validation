@@ -5,7 +5,7 @@ flake8==3.5.0
 invoke==1.2.0
 Jinja2==2.10
 kubernetes==7.0.0
-netaddr==0.7.19
+netaddr==0.8.0
 paramiko==2.4.2
 PyJWT==1.6.4
 pytest-repeat==0.7.0
