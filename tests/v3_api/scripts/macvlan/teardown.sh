@@ -18,5 +18,3 @@ rm -rf ${STATE_DIR}
 
 docker ps -a | grep cnrancher/rancher:${TAG} | sudo xargs docker stop
 docker ps -a | grep cnrancher/rancher:${TAG} | sudo xargs docker rm
-
-tmux kill-session

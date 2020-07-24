@@ -220,7 +220,8 @@ def validate_workload(p_client, workload, type, ns_name, pod_count=1,
     if type == "cronJob":
         time.sleep(wait_for_cron_pods)
     pods = p_client.list_pod(workloadId=workload.id).data
-    assert len(pods) == pod_count
+    if type != "cronJob":
+        assert len(pods) == pod_count
     for pod in pods:
         wait_for_pod_to_running(p_client, pod)
     wl_result = execute_kubectl_cmd(
@@ -1171,7 +1172,7 @@ def validate_response_app_endpoint(p_client, appId):
                 assert False, "failed to connect to the app"
 
 
-def create_deployment_wl(p_client, ns, img, annotations={}, scale=1, node=None):
+def create_deployment_wl(p_client, ns, img, annotations={}, scale=1, node=None, ports=None):
     name = random_test_name("deployment")
     con = [{
         "initContainer": False,
@@ -1196,7 +1197,8 @@ def create_deployment_wl(p_client, ns, img, annotations={}, scale=1, node=None):
         "image": img,
         "livenessProbe": None,
         "name": name,
-        "volumeMounts": []
+        "volumeMounts": [],
+        "ports": ports
     }]
     dnsConfig = {"options": []}
     deploymentConfig = {"minReadySeconds": 0, "type": "deploymentConfig", "revisionHistoryLimit": 10,
@@ -1412,3 +1414,22 @@ def create_job_wl(p_client, ns, img, annotations={}, scale=1, node=None):
                                         scheduling=scheduling,
                                         scale=scale)
     return workload
+
+
+def create_user(url, client, username, password, globalRoleId, subjectKind="User"):
+    user = client.create_user(username=username,
+                              password=password)
+    client.create_global_role_binding(globalRoleId=globalRoleId,
+                                      subjectKind=subjectKind,
+                                      userId=user.id)
+    user_token = get_user_token(url, username, password)
+    return user, user_token
+
+
+def get_user_token(url, username, password):
+    r = requests.post(url, json={
+        'username': username,
+        'password': password,
+        'responseType': 'json',
+    }, verify=False)
+    return r.json()["token"]

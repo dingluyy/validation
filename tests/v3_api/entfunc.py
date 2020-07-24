@@ -32,7 +32,6 @@ def validate_internal_cluster(client, cluster, intermediate_state="provisioning"
     name = random_test_name("default")
     con = [{"name": "test1",
             "image": TEST_INTERNAL_IMAGE, "tty": "true"}]
-    print(con)
     workload = p_client.create_workload(name=name,
                                         containers=con,
                                         namespaceId=ns.id,
@@ -66,7 +65,6 @@ def validate_nodedrivers_cluster(client, cluster,
                 lambda x: 'State is: ' + x.state,
                 timeout=MACHINE_TIMEOUT)
             assert cluster.state == intermediate_state
-        print("check cluster state provisioning success ")
         #nodeDriver state validate
         wait_for_nodes(client, cluster,exception_list=nodes_not_in_active_state)
         #cluster state validate
@@ -83,20 +81,15 @@ def validate_nodedrivers_cluster(client, cluster,
 def wait_for_nodes(client, cluster, exception_list=[],
                                     retry_count=0):
     nodes = client.list_node(clusterId=cluster.id).data
-    print("cluster nodes",nodes)
     node_auto_deleted = False
     for node in nodes:
         if node.requestedHostname not in exception_list:
             node = wait_for_node_status(client,node,"registering")
-            print("check node state registering success",nodes)
             time.sleep(5)
             node = wait_for_node_status(client, node, "active")
-            print("check node state active success",nodes)
             if node is None:
-                print("Need to re-evalauate new node list")
                 node_auto_deleted = True
                 retry_count += 1
-                print("Retry Count:" + str(retry_count))
     if node_auto_deleted and retry_count < 5:
         wait_for_nodes_to_become_active(client, cluster, exception_list,
                                         retry_count)
@@ -161,7 +154,6 @@ def create_macvlan_workload(client,cluster,p_client,ns,ip,mac,subnet,cidr,img,sc
     scheduling = {"node":{}}
     if node != None:
         scheduling={"node": {"nodeId": node}}
-    print("scheduling node : ",scheduling)
     workload = p_client.create_workload(name=name,
                                         containers=con,
                                         namespaceId=ns.id,
@@ -172,7 +164,6 @@ def create_macvlan_workload(client,cluster,p_client,ns,ip,mac,subnet,cidr,img,sc
                                         scheduling=scheduling,
                                         scale=scale)
 
-    print(workload)
     pods,kind,ips,macs = validate_macvlan_workload(p_client, workload, "deployment", ns.name,scale,cidr)
     return workload,pods,kind,ips,macs
 
@@ -234,7 +225,6 @@ def validate_macvlan_workload(p_client, workload, type, ns_name, pod_count, wait
         if type == "job":
             assert wl_result["status"]["active"] == pod_count
             return
-
         for key, value in workload.workloadLabels.items():
             label = key + "=" + value
         get_pods = "get pods -l" + label + " -n " + ns_name
@@ -256,9 +246,11 @@ def validate_macvlan_service(ns, workload):
     workload_service = workload["name"]
     selector_service = workload["name"] + MACVLAN_SERVICE_SUFFIX
 
-    validate_service(ns, workload_service)
+    workload_result = validate_service(ns, workload_service)
+    assert workload_result == 0
     time.sleep(1)
-    validate_service(ns, selector_service)
+    selector_result = validate_service(ns, selector_service)
+    assert selector_result == 0
 
 def get_macvlan_ip_mac_kind(ipList, macList):
     '''
@@ -285,7 +277,6 @@ def get_macvlan_ip_mac_kind(ipList, macList):
                 kind = 14
             if ip_len != mac_len:
                 kind = 15
-    print(kind)
     return kind
 
 def validate_macvlan_pod_fail(client, pod, ns_name, timeout=DEFAULT_TIMEOUT):
@@ -327,21 +318,15 @@ def validate_nslookup_wget(nginx_kind, busybox_kind,nginx_pods,busybox_pods,ngin
     validate_wl_pod(busybox_pods, busybox_kind, busybox_subnet, busybox_ns, busybox_ips, busybox_macs, nginx_ns, nginx_workload,ping,nginx_pods)
 
 def validate_wl_pod(pods,kind,subnet,busybox_ns,ips,macs,nginx_ns=None,nginx_workload=None,ping=False,nginx_pods=None,node=None):
-    print("validate_wl_pod busybox_ns",busybox_ns)
     spec = get_macvlansubnet_info(subnet)
-    print("subnet spec:",spec)
     for pod in pods["items"]:
-        print("validate_wl_pod pod", pod)
         assert pod["status"]["phase"] == "Running"
         annotations = pod["metadata"]["annotations"]["k8s.v1.cni.cncf.io/networks-status"]
         annotations.replace("\n","")
         annotations=json.loads(annotations)
         for annotation in annotations:
-            print("annotation for",annotation)
             a=annotation["name"]
-            print(a)
             if (annotation["name"] == "static-macvlan-cni-attach") and (annotation["interface"] == "eth1"):
-                print(annotation["ips"])
                 assert len(annotation["ips"]) == 1
                 ip = annotation["ips"][0]
                 ips, macs = validate_ip_mac_by_kind(ip, annotation["mac"], ips, macs, kind, spec["cidr"])
@@ -351,23 +336,22 @@ def validate_wl_pod(pods,kind,subnet,busybox_ns,ips,macs,nginx_ns=None,nginx_wor
         ip_result=validate_macvlanIP(busybox_ns,pod['metadata'])
         assert ip_result == 0
         if (nginx_ns != None) and (nginx_workload != None):
-            nslookup=validate_macvlan_service_nslookup(pod,busybox_ns,nginx_ns,nginx_workload.name+MACVLAN_SERVICE_SUFFIX)
+            nslookup=validate_macvlan_service_nslookup(pod["metadata"]["name"],busybox_ns,nginx_ns,nginx_workload.name+MACVLAN_SERVICE_SUFFIX)
             if ping:
                 assert nslookup == 0
             else:
                 assert nslookup == 1
-            wget=validate_macvlan_service_wget(pod,busybox_ns,nginx_ns,nginx_workload.name+MACVLAN_SERVICE_SUFFIX)
+            wget=validate_macvlan_service_wget(pod["metadata"]["name"],busybox_ns,nginx_ns,nginx_workload.name+MACVLAN_SERVICE_SUFFIX)
             if ping:
                 assert wget == 0
             else:
                 assert wget == 1
                 # check Custom Route
             if 'routes' in spec:
-                check_pod_route(pod["metadata"]["name"], busybox_ns["name"], spec["routes"])
+                check_pod_route(pod["metadata"]["name"], busybox_ns["name"], spec)
         if nginx_pods != None:
-            print("validate_wl_pod nginx_pods",nginx_pods)
             for nginx_pod in nginx_pods["items"]:
-                ip_ping = validate_macvlan_pods_ping(pod,nginx_pod,busybox_ns)
+                ip_ping = validate_macvlan_pods_ping(pod["metadata"],nginx_pod["metadata"],busybox_ns)
                 if ping:
                     assert ip_ping == 0
                 else:
@@ -380,7 +364,6 @@ def validate_wl_pod(pods,kind,subnet,busybox_ns,ips,macs,nginx_ns=None,nginx_wor
 def get_macvlansubnet_info(subnet):
     cmd = "get  macvlansubnet -n kube-system " + subnet
     exec_result = execute_kubectl_cmd_with_code(cmd, json_out=True, stderr=False, stderrcode=False)
-    print(exec_result["spec"])
     return exec_result["spec"]
 
 def validate_ip_mac_by_kind(podip, podmac, ipList, macList, kind, cidr):
@@ -406,8 +389,6 @@ def validate_ip_mac_by_kind(podip, podmac, ipList, macList, kind, cidr):
     return ipList, macList
 
 def check_ip_in_ranges(ip, ip_ranges):
-    print("check_ip_in_ranges ip : ",ip)
-    print("check_ip_in_ranges ip_ranges : ",ip_ranges)
     result = False
     ip_int=int(ipToBinary(ip), 2)
     for range in ip_ranges:
@@ -425,22 +406,35 @@ def validate_macvlanIP(ns, pod):
     :param pod: wl pod
     :return: 0 exist ; 1 not exist
     '''
-    print("validate_macvlanIP pod",pod)
-    print("validate_macvlanIP ns",ns)
     cmd = "get MacvlanIP -n " + ns["name"] + " " + pod["name"]
     exec_result = execute_kubectl_cmd_with_code(cmd, json_out=False, stderr=False, stderrcode=True)
     return exec_result
 
-def check_pod_route(pod, ns, routes):
-    for route in routes:
+def get_macvlanip(ns, pod):
+    cmd = "get MacvlanIP -n " + ns["name"] + " " + pod["name"]
+    exec_result = execute_kubectl_cmd_with_code(cmd, json_out=True, stderr=False, stderrcode=False)
+    return exec_result
+
+def check_macvlanip_ipdelayreuse(macvlanip):
+    assert 'finalizers' in macvlanip['metadata'].keys()
+    finalizers = macvlanip['metadata']['finalizers']
+    assert 'macvlan.panda.io/ipDelayReuse' in finalizers
+
+def check_pod_route(pod, ns, subnet):
+    for route in subnet['routes']:
         dst=route["dst"]
-        gw=route["gw"]
         results = get_pod_spec_route(pod,ns,dst)
-        print("get_pod_spec_route results : ",results)
-        if gw != "" :
-            assert gw == results[1]
-        mask = exchange_maskint(dst.split("/")[1])
+        if 'gw' in route.keys():
+            assert route['gw'] == results[1]
+        else:
+            if route['iface'] == 'eth1':
+                assert subnet['gateway'] == results[1]
+            if route['iface'] == 'eth0':
+                assert results[1] == '0.0.0.0'
+        mask = exchange_maskint(int(dst.split("/")[1]))
         assert mask == results[2]
+        assert results[7].replace("\n","") == route['iface']
+
 
 def get_pod_spec_route(pod, ns, dst):
     destination = dst.split("/")[0]
@@ -448,6 +442,14 @@ def get_pod_spec_route(pod, ns, dst):
     result = execute_kubectl_cmd_with_code(cmd, json_out=False, stderr=False, stderrcode=False)
     result = result.split(" ")
     return result
+
+
+def get_pod_spec_iproute(pod, ns):
+    cmd = "exec " + pod + " -n " + ns +" -- ip route"
+    result = execute_kubectl_cmd_with_code(cmd, json_out=False, stderr=False, stderrcode=False)
+    result = result.split(" \n")
+    return result
+
 
 def validate_macvlan_service_nslookup(pod, busybox_ns, nginx_ns, service):
     '''
@@ -457,15 +459,13 @@ def validate_macvlan_service_nslookup(pod, busybox_ns, nginx_ns, service):
     :param service: wl.name
     :return: 0 success ; 1 fail
     '''
-    cmd = " -- nslookup " + service + "." + nginx_ns["name"] +".svc.cluster.local"
-    result = get_kubectl_execCmd_result(pod["metadata"]["name"], busybox_ns["name"], cmd)
+    cmd = " -- nslookup " + service + "." + nginx_ns["name"] + ".svc.cluster.local"
+    result = get_kubectl_execCmd_result(pod, busybox_ns["name"], cmd)
     return result
 
 def get_kubectl_execCmd_result(type, ns, cmd):
     exec_cmd = "exec " + type + " -n " + ns + cmd
-    print("kubectl exec cmd : ", exec_cmd)
     result = execute_kubectl_cmd_with_code(exec_cmd, json_out=False, stderr=False, stderrcode=True)
-    print("kubectl exec result : ", result)
     return result
 
 def validate_macvlan_service_wget(pod, busybox_ns, nginx_ns, service):
@@ -476,11 +476,11 @@ def validate_macvlan_service_wget(pod, busybox_ns, nginx_ns, service):
     :param service: wl.name
     :return: 0 success ; 1 fail
     '''
-    cmd = " -- wget --spider --timeout=10 " + service + "." + nginx_ns["name"]
-    result = get_kubectl_execCmd_result(pod["metadata"]["name"], busybox_ns["name"], cmd)
+    cmd = " -- wget --spider --timeout=10 " + service + "." + nginx_ns["name"] + ".svc.cluster.local"
+    result = get_kubectl_execCmd_result(pod, busybox_ns["name"], cmd)
     return result
 
-def validate_macvlan_pods_ping(busybox_pod, nginx_pod, ns):
+def validate_macvlan_pods_ping(busybox_pod, nginx_pod, ns, ip_count=1):
     '''
     desc: check macvlan pod ping
     :param busybox_pod: busybox macvlan pod
@@ -488,21 +488,19 @@ def validate_macvlan_pods_ping(busybox_pod, nginx_pod, ns):
     :param ns: namespace
     :return: 0 ping success ; 1 ping fail
     '''
-    print("validate_macvlan_pods_ping nginx_pod : ",nginx_pod)
-    annotations = nginx_pod["metadata"]["annotations"]["k8s.v1.cni.cncf.io/networks-status"]
+    annotations = nginx_pod["annotations"]["k8s.v1.cni.cncf.io/networks-status"]
     annotations.replace("\n", "")
     annotations = json.loads(annotations)
+    result = 0
     for annotation in annotations:
-        print("annotation for", annotation)
-        a = annotation["name"]
-        print(a)
         if (annotation["name"] == "static-macvlan-cni-attach") and (annotation["interface"] == "eth1"):
-            print(annotation["ips"])
-            assert len(annotation["ips"]) == 1
-            ip = annotation["ips"][0]
-            cmd = " -- ping -w 5 " + ip
-            result = get_kubectl_execCmd_result(busybox_pod["metadata"]["name"], ns["name"], cmd)
-            return result
+            assert len(annotation["ips"]) == ip_count
+            for ip in annotation["ips"]:
+                cmd = " -- ping -w 5 " + ip
+                result = get_kubectl_execCmd_result(busybox_pod["name"], ns["name"], cmd)
+                if result == 1:
+                    return result
+    return result
 
 def validate_ip_in_subnet(ip, subnet):
     subnet_list = subnet.split('/')
@@ -534,7 +532,6 @@ def validate_macvlan_cluster(client, cluster, token,intermediate_state="provisio
             timeout=MACHINE_TIMEOUT)
         assert cluster.state == "active"
     nodes = client.list_node(clusterId=cluster.id).data
-    print("cluster nodes", nodes)
     for node in nodes:
         wait_for_node_status(client, node, "active")
     # Create Daemon set workload and have an Ingress with Workload
@@ -683,6 +680,40 @@ def get_admin_client_and_cluster_byUrlToken(url, token):
     cluster = clusters[0]
     return client, cluster
 
+def wait_for_wl_delete(client, workload, timeout=DEFAULT_TIMEOUT):
+    workloads = client.list_workload(name=workload).data
+    start = time.time()
+    while len(workloads) != 0:
+        if time.time() - start > timeout:
+            raise AssertionError(
+                "Timed out waiting for state to get to active")
+        time.sleep(.5)
+        workloads = client.list_workload(name=workload).data
+    return workloads
+
+
+def wait_for_pod_delete(client, workload, timeout=DEFAULT_TIMEOUT):
+    pods = client.list_pod(workloadId=workload.id).data
+    start = time.time()
+    while len(pods) != 0:
+        if time.time() - start > timeout:
+            raise AssertionError(
+                "Timed out waiting for state to get to active")
+        time.sleep(.5)
+        pods = client.list_pod(workloadId=workload.id).data
+    return pods
+
+def wait_for_project_delete(client, cluster, project, timeout=DEFAULT_TIMEOUT):
+    projects = client.list_project(name=project,clusterId=cluster.id).data
+    start = time.time()
+    while len(projects) != 0:
+        if time.time() - start > timeout:
+            raise AssertionError(
+                "Timed out waiting for state to get to active")
+        time.sleep(.5)
+        projects = client.list_project(name=project, clusterId=cluster.id).data
+    return projects
+
 # ------ tools ------
 def split_to_list(str):
     # des : split wl network ip/mac
@@ -734,14 +765,25 @@ def maskToBinary(mask):
     elif len(mask_list) == 4:
         binary = ipToBinary(mask)
 
-    print(binary)
     return binary
+
+def v4_to_v6(ipv4, cidr):
+    temp= ipv4.split('.')
+    int16 = []
+    for i in temp:
+        int16.append('%02x' % int(i))
+    ipv6 = '2002:%s:%s:0:0:0:0:0' % (int16[0]+int16[1], int16[2]+int16[3])
+
+    mask = cidr.split('/')[1]
+    sixtofourSize = 48 - (32 - int(mask))
+    ip = IPNetwork(ipv6 + "/" + str(sixtofourSize))
+
+    return ip
 
 # ------ run cmd ------
 def execute_kubectl_cmd_with_code(cmd, json_out=True, stderr=False, stderrcode=False):
     command = 'kubectl --kubeconfig {0} {1}'.format(
         kube_fname, cmd)
-    print(command)
     result = ""
     if json_out:
         command += ' -o json'
@@ -753,7 +795,6 @@ def execute_kubectl_cmd_with_code(cmd, json_out=True, stderr=False, stderrcode=F
         result = run_command(command)
     if json_out:
         result = json.loads(result)
-    print(result)
     return result
 
 def run_command_with_stderr_code(command):
@@ -764,15 +805,39 @@ def run_command_with_stderr_code(command):
     except subprocess.CalledProcessError as e:
         output = e.output
         returncode = e.returncode
-    print(returncode)
     return returncode
 
+def execute_kubectl_cmd_with_stderr_output(cmd):
+    command = 'kubectl --kubeconfig {0} {1}'.format(
+        kube_fname, cmd)
+    result = run_command_error_with_stderr(command)
+    return result
 
-def get_macvlan_subnet_template(name,project,master,vlan,cidr,gateway,ranges,routes,podDefaultGateway):
+
+def run_command_error_with_stderr(command):
+    try:
+        output = subprocess.check_output(command, shell=True,
+                                         stderr=subprocess.PIPE)
+    except subprocess.CalledProcessError as e:
+        output = e.stderr
+    return output
+
+def create_macvlan_subnet_ipv6_yaml(name, project, master, cidr, vlan=0, gateway='', ranges=[], routes=[], podDefaultGateway={}, ipDelayReuse=0):
+    yaml_fname= os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                  random_test_name("test-macvlan-subnet") + ".yaml")
+    macvlan_subnet_yaml=get_macvlan_subnet_template(name, project, master, cidr, vlan, gateway, ranges, routes, podDefaultGateway, ipDelayReuse)
+    with open(yaml_fname, 'w') as fp:
+        yaml.dump(macvlan_subnet_yaml,fp,default_flow_style=False)
+    return yaml_fname
+
+def get_macvlan_subnet_template(name, project, master, cidr, vlan=0, gateway='', ranges=[], routes=[], podDefaultGateway={}, ipDelayReuse=0):
     maxvlan_subnet_template = {
         "apiVersion": "macvlan.cluster.cattle.io/v1",
         "kind": "MacvlanSubnet",
         "metadata": {
+            "annotations": {
+                "macvlan.panda.io/ipv6to4": "true"
+            },
             "name": name,
             "namespace": "kube-system",
             "labels": {
@@ -787,7 +852,8 @@ def get_macvlan_subnet_template(name,project,master,vlan,cidr,gateway,ranges,rou
             "gateway": gateway,
             "ranges": ranges,
             "routes": routes,
-            "podDefaultGateway": podDefaultGateway
+            "podDefaultGateway": podDefaultGateway,
+            "ipDelayReuse": ipDelayReuse
         }
     }
     return maxvlan_subnet_template

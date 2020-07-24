@@ -200,8 +200,6 @@ def test_gpu_mem_unused():
     wl_cons = workload.containers
     assert len(wl_cons) == 1
     wl_con = wl_cons[0]
-    print(wl_con.resources.requests)
-    print(con[0]["resources"]["requests"])
     assert wl_con.resources.requests['rancher.io/gpu-mem'] == con[0]["resources"]["requests"]["rancher.io/gpu-mem"]
     assert wl_con.resources.limits['rancher.io/gpu-mem'] == con[0]["resources"]["limits"]["rancher.io/gpu-mem"]
 
@@ -227,8 +225,6 @@ def test_gpu_mem_used2():
     wl_cons = workload.containers
     assert len(wl_cons) == 1
     wl_con = wl_cons[0]
-    print(wl_con.resources.requests)
-    print(con[0]["resources"]["requests"])
     assert wl_con.resources.requests['rancher.io/gpu-mem'] == con[0]["resources"]["requests"]["rancher.io/gpu-mem"]
     assert wl_con.resources.limits['rancher.io/gpu-mem'] == con[0]["resources"]["limits"]["rancher.io/gpu-mem"]
 
@@ -266,7 +262,6 @@ def test_gpu_mem_overrun():
             pods = p_client.list_pod(workloadId=workload.id).data
             assert len(pods) == 1
             pod = pods[0]
-            print(pod)
             assert pod.transitioning == "error"
             assert "Insufficient rancher.io/gpu-mem" in pod.transitioningMessage
             break
@@ -279,7 +274,6 @@ def test_gpu_mem_overrun():
     assert len(projects) >= 1
     for project in projects:
         if "p_gpu" in project.name:
-            print(project.name)
             client.delete(project)
 
 
@@ -349,8 +343,6 @@ def test_gpu_count_unused():
     wl_cons = workload.containers
     assert len(wl_cons) == 1
     wl_con = wl_cons[0]
-    print(wl_con.resources.requests)
-    print(con[0]["resources"]["requests"])
     assert wl_con.resources.requests['nvidia.com/gpu'] == con[0]["resources"]["requests"]["nvidia.com/gpu"]
     assert wl_con.resources.limits['nvidia.com/gpu'] == con[0]["resources"]["limits"]["nvidia.com/gpu"]
 
@@ -376,8 +368,6 @@ def test_gpu_count_used2():
     wl_cons = workload.containers
     assert len(wl_cons) == 1
     wl_con = wl_cons[0]
-    print(wl_con.resources.requests)
-    print(con[0]["resources"]["requests"])
     assert wl_con.resources.requests['nvidia.com/gpu'] == con[0]["resources"]["requests"]["nvidia.com/gpu"]
     assert wl_con.resources.limits['nvidia.com/gpu'] == con[0]["resources"]["limits"]["nvidia.com/gpu"]
 
@@ -415,7 +405,6 @@ def test_gpu_count_overrun():
             pods = p_client.list_pod(workloadId=workload.id).data
             assert len(pods) == 1
             pod = pods[0]
-            print(pod)
             assert pod.transitioning == "error"
             assert "Insufficient nvidia.com/gpu" in pod.transitioningMessage
             break
@@ -428,7 +417,6 @@ def test_gpu_count_overrun():
     assert len(projects) >= 1
     for project in projects:
         if "p_gpu" in project.name:
-            print(project.name)
             client.delete(project)
 
 
@@ -451,8 +439,6 @@ def test_gpu_count_mem():
     wl_cons = workload.containers
     assert len(wl_cons) == 1
     wl_con = wl_cons[0]
-    print(wl_con.resources.requests)
-    print(con[0]["resources"]["requests"])
     assert wl_con.resources.requests['rancher.io/gpu-mem'] == con[0]["resources"]["requests"]["rancher.io/gpu-mem"]
     assert wl_con.resources.limits['rancher.io/gpu-mem'] == con[0]["resources"]["limits"]["rancher.io/gpu-mem"]
 
@@ -465,7 +451,6 @@ def test_gpu_count_mem():
             pods = p_client.list_pod(workloadId=workload.id).data
             assert len(pods) == 1
             pod = pods[0]
-            print(pod)
             assert pod.transitioning == "error"
             assert "Insufficient rancher.io/gpu-mem" in pod.transitioningMessage
             break
@@ -495,7 +480,6 @@ def test_add_gpu_mem_quota_default_ns():
            share_namespace_resource_quota["limit"]["requestsGpuMemory"]
 
     ns = create_ns(c_client, cluster, project)
-    print(ns)
 
     assert ns is not None
     assert ns.resourceQuota is not None
@@ -524,7 +508,6 @@ def test_add_gpu_mem_quota_spec_ns():
                                    projectId=project.id,
                                    resourceQuota=quota)
     ns = c_client.wait_success(ns)
-    print(ns)
 
     assert ns is not None
     assert ns.resourceQuota is not None
@@ -553,7 +536,6 @@ def test_edit_gpu_mem_quota_spec_ns():
                                    projectId=project.id,
                                    resourceQuota=quota)
     ns = c_client.wait_success(ns)
-    print(ns)
 
     assert ns is not None
     assert ns.resourceQuota is not None
@@ -588,7 +570,6 @@ def test_gpu_mem_with_quota():
            share_namespace_resource_quota["limit"]["requestsGpuMemory"]
 
     ns = create_ns(c_client, cluster, project)
-    print(ns)
 
     assert ns is not None
     assert ns.resourceQuota is not None
@@ -638,7 +619,6 @@ def test_gpu_mem_with_quota_overrun():
            share_namespace_resource_quota["limit"]["requestsGpuMemory"]
 
     ns = create_ns(c_client, cluster, project)
-    print(ns)
 
     assert ns is not None
     assert ns.resourceQuota is not None
@@ -691,7 +671,6 @@ def test_add_gpu_count_quota_default_ns():
            default_namespace_resource_quota["limit"]["requestsGpuCount"]
 
     ns = create_ns(c_client, cluster, project)
-    print(ns)
 
     assert ns is not None
     assert ns.resourceQuota is not None
@@ -720,7 +699,6 @@ def test_add_gpu_count_quota_spec_ns():
                                    projectId=project.id,
                                    resourceQuota=quota)
     ns = c_client.wait_success(ns)
-    print(ns)
 
     assert ns is not None
     assert ns.resourceQuota is not None
@@ -749,7 +727,6 @@ def test_edit_gpu_count_quota_spec_ns():
                                    projectId=project.id,
                                    resourceQuota=quota)
     ns = c_client.wait_success(ns)
-    print(ns)
 
     assert ns is not None
     assert ns.resourceQuota is not None
@@ -784,7 +761,6 @@ def test_gpu_count_with_quota():
            default_namespace_resource_quota["limit"]["requestsGpuCount"]
 
     ns = create_ns(c_client, cluster, project)
-    print(ns)
 
     assert ns is not None
     assert ns.resourceQuota is not None
@@ -832,7 +808,6 @@ def test_gpu_count_with_quota_overrun():
            default_namespace_resource_quota["limit"]["requestsGpuCount"]
 
     ns = create_ns(c_client, cluster, project)
-    print(ns)
 
     assert ns is not None
     assert ns.resourceQuota is not None
@@ -845,7 +820,6 @@ def test_gpu_count_with_quota_overrun():
     con = [{"name": "test1",
             "image": GPU_IMAGE,
             "resources": {"requests": {"nvidia.com/gpu": "3"}, "limits": {"nvidia.com/gpu": "3"}}}]
-
     workload = p_client.create_workload(name=name,
                                         containers=con,
                                         namespaceId=ns.id,
@@ -877,7 +851,6 @@ def test_enable_gpu_monitor():
         id=MONITORING_TEMPLATE_ID).data[0]
 
     MONITORING_VERSION = monitoring_template.defaultVersion
-    print("MONITORING_VERSION=" + MONITORING_VERSION)
 
     if cluster["enableClusterMonitoring"] is False:
         client.action(cluster, "enableMonitoring",
@@ -950,7 +923,6 @@ def test_disable_monitor():
         id=MONITORING_TEMPLATE_ID).data[0]
 
     MONITORING_VERSION = monitoring_template.defaultVersion
-    print("MONITORING_VERSION=" + MONITORING_VERSION)
 
     if cluster["enableClusterMonitoring"] is False:
         client.action(cluster, "enableMonitoring",
@@ -965,7 +937,6 @@ def test_disable_monitor():
     wait_for_app_to_active(p_client, GPU_MONITORING_APP)
 
     cluster = client.reload(cluster)
-    print(cluster)
     client.action(cluster, "disableMonitoring")
     start = time.time()
     while True:
@@ -987,7 +958,6 @@ def test_disable_gpu_monitor():
         id=MONITORING_TEMPLATE_ID).data[0]
 
     MONITORING_VERSION = monitoring_template.defaultVersion
-    print("MONITORING_VERSION=" + MONITORING_VERSION)
 
     if cluster["enableClusterMonitoring"] is False:
         client.action(cluster, "enableMonitoring",
@@ -1003,9 +973,7 @@ def test_disable_gpu_monitor():
 
     answers = C_MONITORING_ANSWERS
     answers['exporter-gpu-node.enabled'] = 'false'
-    print(answers)
     cluster = client.reload(cluster)
-    print(cluster)
     client.action(cluster, "editMonitoring", answers=answers)
     start = time.time()
     while True:
@@ -1060,7 +1028,6 @@ def test_gpu_mem_with_quota_part():
            share_namespace_resource_quota["limit"]["requestsGpuMemory"]
 
     ns = create_ns(c_client, cluster, project)
-    print(ns)
 
     assert ns is not None
     assert ns.resourceQuota is not None
@@ -1086,6 +1053,8 @@ def test_gpu_mem_with_quota_part():
     assert wl_con.resources.requests['rancher.io/gpu-mem'] == con[0]["resources"]["requests"]["rancher.io/gpu-mem"]
     assert wl_con.resources.limits['rancher.io/gpu-mem'] == con[0]["resources"]["limits"]["rancher.io/gpu-mem"]
 
+    wait_for_wl_to_active(p_client, workload)
+
     p = client.reload(project)
     ns1= c_client.reload(ns)
     p_annotations = p.annotations
@@ -1096,6 +1065,7 @@ def test_gpu_mem_with_quota_part():
     p_client.delete(workload)
     wait_for_wl_delete(p_client, workload)
     client.delete(project)
+    wait_for_project_delete(client, cluster, project)
 
 
 def test_gpu_mem_with_quota_all():
@@ -1118,7 +1088,6 @@ def test_gpu_mem_with_quota_all():
            share_namespace_resource_quota["limit"]["requestsGpuMemory"]
 
     ns = create_ns(c_client, cluster, project)
-    print(ns)
 
     assert ns is not None
     assert ns.resourceQuota is not None
@@ -1144,6 +1113,8 @@ def test_gpu_mem_with_quota_all():
     assert wl_con.resources.requests['rancher.io/gpu-mem'] == con[0]["resources"]["requests"]["rancher.io/gpu-mem"]
     assert wl_con.resources.limits['rancher.io/gpu-mem'] == con[0]["resources"]["limits"]["rancher.io/gpu-mem"]
 
+    wait_for_wl_to_active(p_client, workload)
+
     p = client.reload(project)
     ns1= c_client.reload(ns)
     p_annotations = p.annotations
@@ -1154,6 +1125,7 @@ def test_gpu_mem_with_quota_all():
     p_client.delete(workload)
     wait_for_wl_delete(p_client, workload)
     client.delete(project)
+    wait_for_project_delete(client, cluster, project)
 
 
 def test_gpu_count_with_quota_part():
@@ -1176,7 +1148,6 @@ def test_gpu_count_with_quota_part():
            default_namespace_resource_quota["limit"]["requestsGpuCount"]
 
     ns = create_ns(c_client, cluster, project)
-    print(ns)
 
     assert ns is not None
     assert ns.resourceQuota is not None
@@ -1199,6 +1170,8 @@ def test_gpu_count_with_quota_part():
     assert wl_con.resources.requests['nvidia.com/gpu'] == con[0]["resources"]["requests"]["nvidia.com/gpu"]
     assert wl_con.resources.limits['nvidia.com/gpu'] == con[0]["resources"]["limits"]["nvidia.com/gpu"]
 
+    wait_for_wl_to_active(p_client, workload)
+
     p = client.reload(project)
     ns1 = c_client.reload(ns)
     p_annotations = p.annotations
@@ -1211,6 +1184,7 @@ def test_gpu_count_with_quota_part():
     p_client.delete(workload)
     wait_for_wl_delete(p_client, workload)
     client.delete(project)
+    wait_for_project_delete(client, cluster, project)
 
 
 def test_gpu_count_with_quota_all():
@@ -1233,7 +1207,6 @@ def test_gpu_count_with_quota_all():
            default_namespace_resource_quota["limit"]["requestsGpuCount"]
 
     ns = create_ns(c_client, cluster, project)
-    print(ns)
 
     assert ns is not None
     assert ns.resourceQuota is not None
@@ -1256,10 +1229,11 @@ def test_gpu_count_with_quota_all():
     assert wl_con.resources.requests['nvidia.com/gpu'] == con[0]["resources"]["requests"]["nvidia.com/gpu"]
     assert wl_con.resources.limits['nvidia.com/gpu'] == con[0]["resources"]["limits"]["nvidia.com/gpu"]
 
+    wait_for_wl_to_active(p_client, workload)
+
     p = client.reload(project)
     ns1 = c_client.reload(ns)
     p_annotations = p.annotations
-
     assert json.loads(p_annotations["field.cattle.io/resourceQuotaUsage"])["requestsGpuCount"] == \
            con[0]["resources"]["limits"]["nvidia.com/gpu"]
     ns_annotations = ns1.annotations
@@ -1269,6 +1243,7 @@ def test_gpu_count_with_quota_all():
     p_client.delete(workload)
     wait_for_wl_delete(p_client, workload)
     client.delete(project)
+    wait_for_project_delete(client, cluster, project)
 
 
 def validate_gpu_cluster(k8s_version, plugin="canal", nodeport="32666", node_count=1, node_roles=[["etcd", "worker", "controlplane"]]):
@@ -1360,7 +1335,6 @@ def validate_cluster_support_gpu(cluster,token):
 
 def wait_for_app_to_active(client, app, timeout=DEFAULT_TIMEOUT):
     apps = client.list_app(name=app).data
-    print(apps)
     assert len(apps) >= 1
     application = apps[0]
 
@@ -1377,30 +1351,6 @@ def wait_for_app_to_active(client, app, timeout=DEFAULT_TIMEOUT):
         assert len(apps) == 1
         app1 = apps[0]
     return app1
-
-
-def wait_for_wl_delete(client, workload, timeout=DEFAULT_TIMEOUT):
-    workloads = client.list_workload(name=workload).data
-    start = time.time()
-    while len(workloads) != 0:
-        if time.time() - start > timeout:
-            raise AssertionError(
-                "Timed out waiting for state to get to active")
-        time.sleep(.5)
-        workloads = client.list_workload(name=workload).data
-    return workloads
-
-
-def wait_for_pod_delete(client, workload, timeout=DEFAULT_TIMEOUT):
-    pods = client.list_pod(workloadId=workload.id).data
-    start = time.time()
-    while len(pods) != 0:
-        if time.time() - start > timeout:
-            raise AssertionError(
-                "Timed out waiting for state to get to active")
-        time.sleep(.5)
-        pods = client.list_pod(workloadId=workload.id).data
-    return pods
 
 
 def check_add_gpu_label(client, node_name, wl, label, key="gpu.cattle.io/type", deleteFlag=False):
@@ -1465,7 +1415,6 @@ def check_delete_gpu_label(client, node, wl, key):
     assert len(pods) == 0
 
     _, node_labels = get_node_label(client, node)
-    print(type(node_labels))
     assert key not in node_labels.keys()
 
 
@@ -1520,11 +1469,8 @@ def validate_gpu_resoucequota_kubectl(namespace, quota_type):
     :return:
     '''
     command = "get quota --namespace " + namespace['id']
-    print(command)
 
     result = execute_kubectl_cmd(command, json_out=True)
-    print("Kubectl command result")
-    print(result)
     testdict = namespace['resourceQuota']
 
     response = result["items"]
@@ -1545,7 +1491,6 @@ def wait_for_monitor_app_to_active(client, app,
     @return: app object
     """
     apps = client.list_app(name=app).data
-    print(apps)
     assert len(apps) >= 1
     application = apps[0]
     app_id = application.id
