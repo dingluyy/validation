@@ -1,6 +1,7 @@
 import pytest
 from .entfunc import *
 from netaddr import *
+import json
 
 CATTLE_TEST_URL = "https://35.229.215.12:8443/"
 RANCHER_API_URL = 'https://35.229.215.12:8443/v3'
@@ -98,3 +99,12 @@ def test_sort_time():
             time = tag['push_time']
             result.append(name)
     print(sorted(result))
+
+
+def test_str_to_list():
+    params = "[{\"harbor_url\":\"http://3.137.176.107/\",\"harbor_version\":\"v2.0\",\"harbor_admin\":\"admin\",\"harbor_password\":\"Harbor12345\",\"public_image\":\"\",\"private_image\":\"\",\"harbor_url_new\":\"http://3.137.220.223:8080/\",\"harbor_version_new\":\"\",\"harbor_admin_new\":\"root\",\"harbor_password_new\":\"\",\"private_image_new\":\"3.137.220.223:8080/autotest-private/nginx:latest\"},{\"harbor_url\":\"http://3.137.220.223:8080\",\"harbor_version\":\"\",\"harbor_admin\":\"admin\",\"harbor_password\":\"Harbor12345\",\"public_image\":\"\",\"private_image\":\"\",\"harbor_url_new\":\"http://3.137.176.107/\",\"harbor_version_new\":\"v2.0\",\"harbor_admin_new\":\"owner\",\"harbor_password_new\":\"\",\"private_image_new\":\"3.137.176.107/autotest-private/nginx:latest\"}]"
+
+    print(params)
+    print(type(params))
+    print(type(json.loads(params)))
+    print(json.loads(params))
