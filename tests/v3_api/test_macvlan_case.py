@@ -160,7 +160,7 @@ def test_create_subnet_alldefault():
 def test_create_subnet_name_none():
     cluster = namespace['cluster']
     cidr = '172.20.0.0/24'
-    r = create_macvlansubnet(cluster, '', '', DEFAULT_MASTER, 0, cidr, '', [], [], {}, 0,'',headers)
+    r = create_macvlansubnet(cluster, '', '', DEFAULT_MASTER, 0, cidr, '', [], [], {}, 0,headers)
     assert r.status_code == 422
     assert 'Invalid' == r.json()['reason']
 
@@ -168,7 +168,7 @@ def test_create_subnet_name_none():
 def test_create_subnet_name_error():
     cluster = namespace['cluster']
     cidr = '172.20.0.0/24'
-    r = create_macvlansubnet(cluster, 'abcd@rancher.com', '', DEFAULT_MASTER, 0, cidr, '', [], [], {}, 0,'',headers)
+    r = create_macvlansubnet(cluster, 'abcd@rancher.com', '', DEFAULT_MASTER, 0, cidr, '', [], [], {}, 0, headers)
     assert r.status_code == 422
     assert 'Invalid' == r.json()['reason']
 
@@ -179,7 +179,7 @@ def test_create_subnet_name_dup():
     cidr = '172.20.0.0/24'
     validate_create_macvlan_subnet(subnet_name, '', DEFAULT_MASTER, 0, cidr, '', [], [], {}, 0, '172.20.0.1',headers)
 
-    r = create_macvlansubnet(cluster, subnet_name, '', DEFAULT_MASTER, 0, cidr, '', [], [], {}, 0,'',headers)
+    r = create_macvlansubnet(cluster, subnet_name, '', DEFAULT_MASTER, 0, cidr, '', [], [], {}, 0, headers)
     assert r.status_code == 409
     assert 'AlreadyExists' == r.json()['reason']
 
@@ -200,7 +200,7 @@ def test_create_subnet_vlan_error():
     cluster = namespace['cluster']
     subnet_name = random_test_name('vlan')
     cidr = '172.20.0.0/24'
-    r = create_macvlansubnet(cluster, subnet_name, '', DEFAULT_MASTER, 'ss', cidr, '', [], [], {}, 0, '', headers)
+    r = create_macvlansubnet(cluster, subnet_name, '', DEFAULT_MASTER, 'ss', cidr, '', [], [], {}, 0, headers)
     assert r.status_code == 422
     assert 'Invalid' == r.json()['reason']
 
@@ -208,7 +208,7 @@ def test_create_subnet_vlan_error():
 def test_create_subnet_cidr_none():
     cluster = namespace['cluster']
     subnet_name = random_test_name('vlan')
-    r = create_macvlansubnet(cluster, subnet_name, '', DEFAULT_MASTER, 0, '', '', [], [], {}, 0,'',headers)
+    r = create_macvlansubnet(cluster, subnet_name, '', DEFAULT_MASTER, 0, '', '', [], [], {}, 0, headers)
     assert r.status_code == 400
     assert 'invalid CIDR address' in r.json()['message']
 
@@ -216,7 +216,7 @@ def test_create_subnet_cidr_none():
 def test_create_subnet_cidr_error():
     cluster = namespace['cluster']
     subnet_name = random_test_name('vlan')
-    r = create_macvlansubnet(cluster, subnet_name, '', DEFAULT_MASTER, 0, '172.22.3e.0/14 ', '', [], [], {}, 0,'',headers)
+    r = create_macvlansubnet(cluster, subnet_name, '', DEFAULT_MASTER, 0, '172.22.3e.0/14 ', '', [], [], {}, 0,headers)
     assert r.status_code == 400
     assert 'invalid CIDR address' in r.json()['message']
 
@@ -314,7 +314,7 @@ def test_create_subnet_routes_eth1_without_cidr():
     routes = [{"dst": CIDR_PREFIX + "30.0/30", "gw": CIDR_PREFIX + "33.100", "iface": "eth1"}]
     cluster = namespace['cluster']
 
-    r = create_macvlansubnet(cluster, subnet_name, '', DEFAULT_MASTER, 0, cidr, '', [], routes, {}, 0, '',headers)
+    r = create_macvlansubnet(cluster, subnet_name, '', DEFAULT_MASTER, 0, cidr, '', [], routes, {}, 0, headers)
     assert r.status_code == 400
     assert "invalid gateway ip \\'172.20.33.100\\' is not in network \\'172.20.0.0/24\\'" not in r.json()['message']
 
