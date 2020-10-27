@@ -1969,11 +1969,10 @@ def test_check_spec_ip_reseved_scale0():
     validate_create_macvlan_subnet(subnet_name, projectId.replace(":", "-"), DEFAULT_MASTER, 0, cidr, '', [],
                                    [], {}, 0, defaultGateway,headers)
 
-    annotations1 = get_workload_macvlan('172.20.49.5', 'auto', subnet_name)
-    create_deployment_wl(p_client, ns, BUSYBOX_IMAGE, annotations1, 0)
+    annotations = get_workload_macvlan('172.20.49.5', 'auto', subnet_name)
+    create_deployment_wl(p_client, ns, BUSYBOX_IMAGE, annotations, 0)
 
-    annotations2 = get_workload_macvlan('172.20.49.5', 'auto', subnet_name)
-    workload2 = create_workload_http(projectId, ns, BUSYBOX_IMAGE, annotations2)
+    workload2 = create_workload_http(projectId, ns, BUSYBOX_IMAGE, annotations)
     assert workload2.status_code == 400
     assert 'ip has been reseved' in workload2.json()['message']
 
