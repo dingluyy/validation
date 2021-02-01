@@ -9,7 +9,7 @@ admin_harbor_dockercredential_label = {"rancher.cn/registry-harbor-auth":"true",
 user_harbor_dockercredential_label = {"rancher.cn/registry-harbor-auth": "true"}
 i = 0
 
-params = json.loads(os.environ.get('RANCHER_HARBOR2_PARAMS'))
+params = json.loads(os.environ.get('RANCHER_HARBOR2_PARAMS','[]'))
 
 class Test_Harbor():
     def setup_class(self):

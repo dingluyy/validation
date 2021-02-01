@@ -5,7 +5,7 @@ BAIDU_CCE_ACCESS_KEY = os.environ.get('RANCHER_BAIDU_CCE_ACCESS_KEY', "")
 BAIDU_CCE_SECRET_KEY = os.environ.get('RANCHER_BAIDU_CCE_SECRET_KEY', "")
 BAIDU_CCE_AMI = os.environ.get('RANCHER_BAIDU_CCE_AMI', "")
 BAIDU_CCE_REGION = os.environ.get('RANCHER_BAIDU_CCE_REGION', "bj")
-BAIDU_CCE_CONTAINER_CIDR = os.environ.get("RANCHER_BAIDU_CCE_CONTAINER_CIDR","172.25.0.0/16")
+BAIDU_CCE_CONTAINER_CIDR = os.environ.get("RANCHER_BAIDU_CCE_CONTAINER_CIDR","172.16.0.0/16")
 
 
 baiduccecredential = pytest.mark.skipif(not (BAIDU_CCE_ACCESS_KEY and BAIDU_CCE_SECRET_KEY),
@@ -30,9 +30,9 @@ def get_baidu_cce_config():
 
     name = random_test_name("test-auto-baidu-cce")
     baidu_cceConfig =  {
-        "bandwidthInMbps": 1000,
+        "bandwidthInMbps": 100,
         "clusterName": name,
-        "clusterVersion": "1.13.10",
+        "clusterVersion": "1.16.8",
         "containerCidr": BAIDU_CCE_CONTAINER_CIDR,
         "cpu": 4,
         "description": "",
@@ -42,19 +42,19 @@ def get_baidu_cce_config():
         "gpuCard": "",
         "gpuCount": 0,
         "ifBuyEip": True,
-        "imageId": "m-zknzIs5r",
+        "imageId": "m-KX3IaJFg",
         "instanceType": 10,
         "memory": 8,
         "name": "",
-        "nodeCount": 2,
+        "nodeCount": 1,
         "osType": "",
         "osVersion": "",
         "region": BAIDU_CCE_REGION,
         "securityGroupId": "g-1f9xx3nhcvb2",
         "securityGroupName": "",
         "subProductType": "netraffic",
-        "subnetId": "sbn-s8aiy18xx974",
-        "zone": "zoneC",
+        "subnetId": "sbn-cvh9kcrz1nfv",
+        "zone": "zoneD",
         "type": "baiduEngineConfig",
         "accessKey": BAIDU_CCE_ACCESS_KEY,
         "secretKey": BAIDU_CCE_SECRET_KEY,
@@ -73,7 +73,9 @@ def get_baidu_cce_config():
 
         "baiduEngineConfig": baidu_cceConfig,
         "name": name,
-        "type": "cluster"
+        "type": "cluster",
+        "dockerRootDir": "dockerRootDir",
+        "fluentdLogDir": "/var/lib/rancher/fluentd/log"
     }
     print("\nBAIDU CCE Configuration")
     print(baidu_cceConfig)

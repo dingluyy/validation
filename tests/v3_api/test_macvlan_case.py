@@ -79,73 +79,6 @@ def test_deploy_rancher_server_flannel_macvlan():
                                    ns, ns, nginx_wl,nginx_ips,nginx_macs,busybox_ips,busybox_macs)
 
 
-def test_macvlan_ranges():
-    client = namespace['client']
-    cluster = namespace['cluster']
-    project, ns = create_project_and_ns_byClient(client, token, cluster)
-
-    subnet_name = random_test_name("vlan")
-    cidr = CIDR_PREFIX + "10.0/24"
-    ranges = [{"rangeStart": CIDR_PREFIX + "10.1","rangeEnd": CIDR_PREFIX + "10.10"}]
-    validate_create_macvlan_subnet(subnet_name, project.id.replace(":","-"), DEFAULT_MASTER, 2, cidr, "", ranges, [],{},0,CIDR_PREFIX+"10.1",headers)
-
-    c_client = get_cluster_client_for_token(cluster, token)
-    ns1 = create_ns(c_client, cluster, project, ns_name=None)
-    p_client = get_project_client_for_token(project, token)
-    #same subnet/not same ns
-    nginx_wl,nginx_pods,nginx_kind,nginx_ips,nginx_macs = create_macvlan_workload(client,cluster,p_client,ns,"auto","auto",subnet_name,cidr,NGINX_IMAGE)
-    busybox_wl,busybox_pods,busybox_kind,busybox_ips,busybox_macs = create_macvlan_workload(client,cluster,p_client,ns1,"auto","auto",subnet_name,cidr,BUSYBOX_IMAGE)
-    if (nginx_pods != None) and (busybox_pods != None):
-        validate_nslookup_wget(nginx_kind, busybox_kind, nginx_pods, busybox_pods, subnet_name, subnet_name,
-                                   ns1, ns, nginx_wl,nginx_ips,nginx_macs,busybox_ips,busybox_macs)
-
-    client.delete(project)
-
-
-def test_macvlan_podDefaultGateway():
-    client = namespace['client']
-    cluster = namespace['cluster']
-    project, ns = create_project_and_ns_byClient(client, token, cluster)
-
-    subnet_name = random_test_name("test-macvlan1")
-    cidr=CIDR_PREFIX + "11.0/24"
-    podDefaultGateway={"enable": True, "serviceCidr": POD_DEFAULT_GATEWAY_CIDR}
-    validate_create_macvlan_subnet(subnet_name, project.id.replace(":","-"), DEFAULT_MASTER, 3, cidr, "", [], [],podDefaultGateway,0,CIDR_PREFIX + "11.1",headers)
-
-    c_client = get_cluster_client_for_token(cluster, token)
-    ns1 = create_ns(c_client, cluster, project, ns_name=None)
-    p_client = get_project_client_for_token(project, token)
-    #same subnet/not same ns
-    nginx_wl,nginx_pods,nginx_kind,nginx_ips,nginx_macs = create_macvlan_workload(client,cluster,p_client,ns,"auto","auto",subnet_name,cidr,NGINX_IMAGE)
-    busybox_wl,busybox_pods,busybox_kind,busybox_ips,busybox_macs = create_macvlan_workload(client,cluster,p_client,ns1,"auto","auto",subnet_name,cidr,BUSYBOX_IMAGE)
-    if (nginx_pods != None) and (busybox_pods != None):
-        validate_nslookup_wget(nginx_kind, busybox_kind, nginx_pods, busybox_pods, subnet_name, subnet_name,
-                                   ns1, ns, nginx_wl,nginx_ips,nginx_macs,busybox_ips,busybox_macs)
-    client.delete(project)
-
-
-def test_macvlan_iface():
-    client = namespace['client']
-    cluster = namespace['cluster']
-    project, ns = create_project_and_ns_byClient(client, token, cluster)
-
-    subnet_name = random_test_name("test-macvlan1")
-    cidr=CIDR_PREFIX + "12.0/24"
-    routes = [{"dst": CIDR_PREFIX + "30.0/30", "gw": CIDR_PREFIX + "12.100", "iface": "eth1"}]
-    validate_create_macvlan_subnet(subnet_name, project.id.replace(":","-"), DEFAULT_MASTER, 4, cidr, "", [], routes,{},0,CIDR_PREFIX + "12.1",headers)
-
-    c_client = get_cluster_client_for_token(cluster, token)
-    ns1 = create_ns(c_client, cluster, project, ns_name=None)
-    p_client = get_project_client_for_token(project, token)
-    #same subnet/not same ns
-    nginx_wl,nginx_pods,nginx_kind,nginx_ips,nginx_macs = create_macvlan_workload(client,cluster,p_client,ns,"auto","auto",subnet_name,cidr,NGINX_IMAGE)
-    busybox_wl,busybox_pods,busybox_kind,busybox_ips,busybox_macs = create_macvlan_workload(client,cluster,p_client,ns1,"auto","auto",subnet_name,cidr,BUSYBOX_IMAGE)
-    if (nginx_pods != None) and (busybox_pods != None):
-        validate_nslookup_wget(nginx_kind, busybox_kind, nginx_pods, busybox_pods, subnet_name, subnet_name,
-                                   ns1, ns, nginx_wl,nginx_ips,nginx_macs,busybox_ips,busybox_macs)
-    client.delete(project)
-
-
 #test create macvlansubnet param
 def test_create_subnet_alldefault():
     cluster = namespace['cluster']
@@ -160,7 +93,7 @@ def test_create_subnet_alldefault():
 def test_create_subnet_name_none():
     cluster = namespace['cluster']
     cidr = '172.20.0.0/24'
-    r = create_macvlansubnet(cluster, '', '', DEFAULT_MASTER, 0, cidr, '', [], [], {}, 0,'',headers)
+    r = create_macvlansubnet(cluster, '', '', DEFAULT_MASTER, 0, cidr, '', [], [], {}, 0,headers)
     assert r.status_code == 422
     assert 'Invalid' == r.json()['reason']
 
@@ -168,7 +101,7 @@ def test_create_subnet_name_none():
 def test_create_subnet_name_error():
     cluster = namespace['cluster']
     cidr = '172.20.0.0/24'
-    r = create_macvlansubnet(cluster, 'abcd@rancher.com', '', DEFAULT_MASTER, 0, cidr, '', [], [], {}, 0,'',headers)
+    r = create_macvlansubnet(cluster, 'abcd@rancher.com', '', DEFAULT_MASTER, 0, cidr, '', [], [], {}, 0, headers)
     assert r.status_code == 422
     assert 'Invalid' == r.json()['reason']
 
@@ -179,7 +112,7 @@ def test_create_subnet_name_dup():
     cidr = '172.20.0.0/24'
     validate_create_macvlan_subnet(subnet_name, '', DEFAULT_MASTER, 0, cidr, '', [], [], {}, 0, '172.20.0.1',headers)
 
-    r = create_macvlansubnet(cluster, subnet_name, '', DEFAULT_MASTER, 0, cidr, '', [], [], {}, 0,'',headers)
+    r = create_macvlansubnet(cluster, subnet_name, '', DEFAULT_MASTER, 0, cidr, '', [], [], {}, 0, headers)
     assert r.status_code == 409
     assert 'AlreadyExists' == r.json()['reason']
 
@@ -200,7 +133,7 @@ def test_create_subnet_vlan_error():
     cluster = namespace['cluster']
     subnet_name = random_test_name('vlan')
     cidr = '172.20.0.0/24'
-    r = create_macvlansubnet(cluster, subnet_name, '', DEFAULT_MASTER, 'ss', cidr, '', [], [], {}, 0, '', headers)
+    r = create_macvlansubnet(cluster, subnet_name, '', DEFAULT_MASTER, 'ss', cidr, '', [], [], {}, 0, headers)
     assert r.status_code == 422
     assert 'Invalid' == r.json()['reason']
 
@@ -208,7 +141,7 @@ def test_create_subnet_vlan_error():
 def test_create_subnet_cidr_none():
     cluster = namespace['cluster']
     subnet_name = random_test_name('vlan')
-    r = create_macvlansubnet(cluster, subnet_name, '', DEFAULT_MASTER, 0, '', '', [], [], {}, 0,'',headers)
+    r = create_macvlansubnet(cluster, subnet_name, '', DEFAULT_MASTER, 0, '', '', [], [], {}, 0, headers)
     assert r.status_code == 400
     assert 'invalid CIDR address' in r.json()['message']
 
@@ -216,7 +149,7 @@ def test_create_subnet_cidr_none():
 def test_create_subnet_cidr_error():
     cluster = namespace['cluster']
     subnet_name = random_test_name('vlan')
-    r = create_macvlansubnet(cluster, subnet_name, '', DEFAULT_MASTER, 0, '172.22.3e.0/14 ', '', [], [], {}, 0,'',headers)
+    r = create_macvlansubnet(cluster, subnet_name, '', DEFAULT_MASTER, 0, '172.22.3e.0/14 ', '', [], [], {}, 0,headers)
     assert r.status_code == 400
     assert 'invalid CIDR address' in r.json()['message']
 
@@ -290,7 +223,7 @@ def test_create_subnet_ranges():
     cidr = '172.20.25.0/24'
     defaultGateway = '172.20.25.1'
     ranges=[{"rangeStart": CIDR_PREFIX + "25.10", "rangeEnd": CIDR_PREFIX + "25.19"},
-            {"rangeStart": CIDR_PREFIX + "25.30", "rangeEnd": CIDR_PREFIX + "25.39"}]
+            {"rangeStart": CIDR_PREFIX + "25.30", "rangeEnd": CIDR_PREFIX + "25.30"}]
     validate_create_macvlan_subnet(subnet_name, '', DEFAULT_MASTER, 0, cidr, '', ranges, [], {}, 0, defaultGateway,headers)
 
     delete_macvlansubnet(cluster,subnet_name,headers)
@@ -314,7 +247,7 @@ def test_create_subnet_routes_eth1_without_cidr():
     routes = [{"dst": CIDR_PREFIX + "30.0/30", "gw": CIDR_PREFIX + "33.100", "iface": "eth1"}]
     cluster = namespace['cluster']
 
-    r = create_macvlansubnet(cluster, subnet_name, '', DEFAULT_MASTER, 0, cidr, '', [], routes, {}, 0, '',headers)
+    r = create_macvlansubnet(cluster, subnet_name, '', DEFAULT_MASTER, 0, cidr, '', [], routes, {}, 0, headers)
     assert r.status_code == 400
     assert "invalid gateway ip \\'172.20.33.100\\' is not in network \\'172.20.0.0/24\\'" not in r.json()['message']
 
@@ -1969,11 +1902,10 @@ def test_check_spec_ip_reseved_scale0():
     validate_create_macvlan_subnet(subnet_name, projectId.replace(":", "-"), DEFAULT_MASTER, 0, cidr, '', [],
                                    [], {}, 0, defaultGateway,headers)
 
-    annotations1 = get_workload_macvlan('172.20.49.5', 'auto', subnet_name)
-    create_deployment_wl(p_client, ns, BUSYBOX_IMAGE, annotations1, 0)
+    annotations = get_workload_macvlan('172.20.49.5', 'auto', subnet_name)
+    create_deployment_wl(p_client, ns, BUSYBOX_IMAGE, annotations, 0)
 
-    annotations2 = get_workload_macvlan('172.20.49.5', 'auto', subnet_name)
-    workload2 = create_workload_http(projectId, ns, BUSYBOX_IMAGE, annotations2)
+    workload2 = create_workload_http(projectId, ns, BUSYBOX_IMAGE, annotations)
     assert workload2.status_code == 400
     assert 'ip has been reseved' in workload2.json()['message']
 
@@ -2420,6 +2352,7 @@ def test_auto_ip_spec_mac_scale_up():
 
     p_client.update(workload, scale=3)
 
+    time.sleep(1)
     new_pods = p_client.list_pod(workloadId=workload.id).data
     assert len(new_pods) == 3
 
@@ -3496,6 +3429,118 @@ def test_macvlan_ipv6_ping_vlan():
     client.delete(project)
     os.remove(yaml1)
     os.remove(yaml2)
+
+
+def test_delete_subnet_with_pod():
+    client = namespace['client']
+    cluster = namespace['cluster']
+    project, ns = create_project_and_ns_byClient(client, token, cluster)
+    p_client = get_project_client_for_token(project, token)
+    projectId = project.id
+
+    subnet_name = random_test_name('vlan')
+    cidr = '172.20.156.0/24'
+    gateway = '172.20.156.100'
+    subnet = validate_create_macvlan_subnet(subnet_name, projectId.replace(':', "-"), DEFAULT_MASTER, 0, cidr, gateway,
+                                            [], [], {}, 0, '', headers)
+
+    annotations = get_workload_macvlan('auto', 'auto', subnet_name)
+    workload = create_deployment_wl(p_client, ns, BUSYBOX_IMAGE, annotations)
+
+    validate_use_macvlan(p_client, workload, 'deployment', ns, subnet)
+
+    validate_delete_macvlan_subnet(subnet)
+
+    pods = p_client.list_pod(workloadId=workload.id).data
+    assert len(pods) == 1
+    assert pods[0]["status"]["phase"] == "Running"
+
+    cmd = 'get macvlanip -n ' + ns.name + ' -l workload.user.cattle.io/workloadselector=deployment-' + ns.name + '-' +workload['name']
+    result = execute_kubectl_cmd_with_code(cmd, json_out=False, stderr=False, stderrcode=True)
+    assert result == 0
+
+    client.delete(project)
+
+
+@pytest.mark.skip
+def test_macvlan_route_eth0_gw_in_cidr():
+    client = namespace['client']
+    cluster = namespace['cluster']
+    project, ns = create_project_and_ns_byClient(client, token, cluster)
+    p_client = get_project_client_for_token(project, token)
+    projectId = project.id
+
+    subnet_name = random_test_name('vlan')
+    cidr = CIDR_PREFIX + '157.0/24'
+    defaultGateway = CIDR_PREFIX + '157.1'
+    routes = [{"dst": CIDR_PREFIX + "30.0/24", "gw": CIDR_PREFIX + "157.99", "iface": "eth0"}]
+    subnet = validate_create_macvlan_subnet(subnet_name, projectId.replace(":", "-"), "ens4", 0, cidr, '',
+                                            [], routes, {}, 0, defaultGateway,headers)
+    annotations = get_workload_macvlan('auto', 'auto', subnet_name)
+
+    busybox_workload = create_deployment_wl(p_client, ns, BUSYBOX_IMAGE, annotations)
+    validate_use_macvlan(p_client, busybox_workload, 'deployment', ns, subnet)
+    busybox_pods = p_client.list_pod(workloadId=busybox_workload.id).data
+    assert len(busybox_pods) == 1
+    busybox_pod = busybox_pods[0]
+    check_pod_route(busybox_pod['name'], ns['name'], subnet['spec'])
+
+    nginx_workload = create_deployment_wl(p_client, ns, NGINX_IMAGE, annotations)
+    validate_use_macvlan(p_client, nginx_workload, 'deployment', ns, subnet)
+    nginx_pods = p_client.list_pod(workloadId=nginx_workload.id).data
+    assert len(nginx_pods) == 1
+    nginx_pod = nginx_pods[0]
+
+    nslookup_result = validate_macvlan_service_nslookup(busybox_pod['name'], ns, ns,
+                                                        nginx_workload.name)
+    assert nslookup_result == 0
+
+    wget_result = validate_macvlan_service_wget(busybox_pod['name'], ns, ns,
+                                                nginx_workload.name)
+    assert wget_result == 0
+
+    nslookup_macvlan_result = validate_macvlan_service_nslookup(busybox_pod['name'], ns, ns,
+                                                                nginx_workload.name + MACVLAN_SERVICE_SUFFIX)
+    assert nslookup_macvlan_result == 0
+
+    wget_macvlan_result = validate_macvlan_service_wget(busybox_pod['name'], ns, ns,
+                                                        nginx_workload.name + MACVLAN_SERVICE_SUFFIX)
+    assert wget_macvlan_result == 0
+
+    ping_result = validate_macvlan_pods_ping(busybox_pod, nginx_pod, ns)
+    assert ping_result == 0
+
+    client.delete(project)
+
+
+def test_macvlan_ipv6_spec():
+    client = namespace['client']
+    cluster = namespace['cluster']
+    project, ns = create_project_and_ns_byClient(client, token, cluster)
+    p_client = get_project_client_for_token(project, token)
+    projectId = project.id
+
+    subnet_name = random_test_name('vlan')
+    cidr = '172.20.158.0/24'
+    gateway = '172.20.158.10'
+    yaml = create_macvlan_subnet_ipv6_yaml(subnet_name, projectId.replace(":", "-"), 'ens4', cidr, 0, gateway)
+    cmd = 'apply -f ' + yaml
+    execute_kubectl_cmd(cmd, False, False)
+    time.sleep(.5)
+    subnet = get_macvlansubnet(subnet_name)
+
+    annotations = get_workload_macvlan('172.20.158.21', '0a:10:11:0f:1a:1b', subnet_name)
+    workload = create_deployment_wl(p_client, ns, BUSYBOX_IMAGE, annotations)
+    validate_use_macvlan(p_client, workload, 'deployment', ns, subnet, 1, 2)
+
+    pods = p_client.list_pod(workloadId=workload.id).data
+    assert len(pods) == 1
+    pod = pods[0]
+
+    validate_macvlan_pod_support_ipv6(pod, ns, cidr)
+
+    client.delete(project)
+    os.remove(yaml)
 
 
 # canal macvlan cluster
